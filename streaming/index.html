@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Streaming BassNet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root {
+    --ground: #f3f6f6; --surface: #ffffff; --sunken: #eaefef;
+    --ink: #0e1a1c; --muted: #566b6e; --faint: #7d9093;
+    --line: #d9e2e1; --line-strong: #b9c8c7;
+    --accent: #0d6b70; --accent-soft: #d7e8e8;
+    --warn: #a2661b; --warn-soft: #f0e3cf;
+    --crit: #9c3b2e; --crit-soft: #f2dcd7; --ok: #2c7a57; --ok-soft: #d8ebe1;
+    --fig-bg: #ffffff;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "IBM Plex Serif", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0c1315; --surface: #131e20; --sunken: #0f191b;
+      --ink: #e4ecea; --muted: #9db0b1; --faint: #7b9092;
+      --line: #24363a; --line-strong: #38504f;
+      --accent: #58bfc2; --accent-soft: #16383a;
+      --warn: #d9a45c; --warn-soft: #3a2e18;
+      --crit: #dd8375; --crit-soft: #3c211c; --ok: #63bd90; --ok-soft: #16321f;
+      --fig-bg: #e9efee;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0c1315; --surface: #131e20; --sunken: #0f191b;
+    --ink: #e4ecea; --muted: #9db0b1; --faint: #7b9092;
+    --line: #24363a; --line-strong: #38504f;
+    --accent: #58bfc2; --accent-soft: #16383a;
+    --warn: #d9a45c; --warn-soft: #3a2e18;
+    --crit: #dd8375; --crit-soft: #3c211c; --ok: #63bd90; --ok-soft: #16321f;
+    --fig-bg: #e9efee;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--serif);
+         font-size: 17px; line-height: 1.65; -webkit-font-smoothing: antialiased; padding-inline: 16px; }
+  .wrap { max-width: 54rem; margin: 0 auto; padding-block: 3rem 6rem; display: flex; flex-direction: column; gap: 3.5rem; }
+  header { display: flex; flex-direction: column; gap: 1rem; }
+  .eyebrow { font-family: var(--sans); font-size: .74rem; font-weight: 600; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--accent); }
+  h1 { font-family: var(--sans); font-weight: 600; font-size: clamp(2rem, 5vw, 2.7rem); line-height: 1.12;
+       letter-spacing: -.015em; margin: 0; text-wrap: balance; }
+  .standfirst { font-size: 1.08rem; color: var(--muted); margin: 0; max-width: 44rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line);
+          font-family: var(--mono); font-size: .78rem; color: var(--faint); }
+  .meta b { color: var(--muted); font-weight: 500; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; font-family: var(--sans); font-size: .86rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+  nav.toc a:hover, nav.toc a:focus-visible { border-bottom-color: var(--accent); }
+  section { display: flex; flex-direction: column; gap: 1.25rem; scroll-margin-top: 1rem; }
+  h2 { font-family: var(--sans); font-weight: 600; font-size: 1.4rem; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 1.02rem; margin: 0; }
+  p { margin: 0; max-width: 46rem; }
+  .lede { color: var(--muted); font-size: .98rem; }
+  code { font-family: var(--mono); font-size: .84em; background: var(--sunken); padding: .08em .32em; color: var(--ink); }
+  .findings { display: flex; flex-direction: column; gap: .9rem; }
+  .finding { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+             padding: 1rem 1.2rem; display: grid; grid-template-columns: 9.5rem 1fr; gap: .3rem 1.2rem; align-items: baseline; }
+  .finding.bad { border-left-color: var(--crit); }
+  .finding.mid { border-left-color: var(--warn); }
+  .finding .big { font-family: var(--sans); font-weight: 600; font-size: 1.5rem; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .finding .big small { display: block; font-size: .72rem; font-weight: 500; color: var(--faint); letter-spacing: .02em; }
+  .finding p { font-size: .95rem; color: var(--muted); }
+  .finding p strong { color: var(--ink); }
+  @media (max-width: 560px) { .finding { grid-template-columns: 1fr; } }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .6rem; }
+  .step { background: var(--surface); border: 1px solid var(--line); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .25rem; }
+  .step b { font-family: var(--sans); font-size: .86rem; color: var(--accent); }
+  .step span { font-size: .88rem; color: var(--muted); line-height: 1.5; }
+  .glossary { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .1rem 1.5rem;
+              border-top: 1px solid var(--line); padding-top: .8rem; }
+  .glossary div { display: grid; grid-template-columns: 7.5rem 1fr; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid var(--line); }
+  .glossary dt { font-family: var(--sans); font-size: .8rem; font-weight: 600; color: var(--ink); }
+  .glossary dd { margin: 0; font-size: .86rem; color: var(--muted); line-height: 1.5; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { padding: .55rem .8rem; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-family: var(--sans); font-weight: 600; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+       color: var(--faint); background: var(--sunken); }
+  td { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+  td:first-child { font-family: var(--sans); color: var(--ink); white-space: normal; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.hl td { color: var(--ink); background: var(--accent-soft); }
+  tr.ref td { color: var(--faint); }
+  .num { text-align: right; }
+  .pill { font-family: var(--sans); font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+          padding: .12rem .45rem; border-radius: 2px; white-space: nowrap; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.bad { background: var(--crit-soft); color: var(--crit); }
+  .pill.mid { background: var(--warn-soft); color: var(--warn); }
+  figure { margin: 0; display: flex; flex-direction: column; gap: .5rem; }
+  figure img { width: 100%; background: var(--fig-bg); border: 1px solid var(--line); display: block; }
+  figcaption { font-size: .86rem; color: var(--faint); max-width: 48rem; }
+  .note { background: var(--sunken); border-left: 2px solid var(--warn); padding: .75rem .9rem; font-size: .93rem; }
+  .note b { font-family: var(--sans); font-size: .74rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--warn); display: block; margin-bottom: .2rem; }
+  .songs { display: flex; flex-direction: column; gap: 1.5rem; }
+  .song { background: var(--surface); border: 1px solid var(--line); padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: .8rem; }
+  .clips { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem 1.2rem; }
+  .clip { display: flex; flex-direction: column; gap: .3rem; }
+  .clip label { font-family: var(--sans); font-size: .84rem; font-weight: 500; }
+  .clip label small { font-weight: 400; color: var(--faint); font-family: var(--mono); font-size: .74rem; margin-left: .35rem; }
+  .clip audio { width: 100%; height: 36px; }
+  .group-label { font-family: var(--sans); font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+                 color: var(--accent); grid-column: 1 / -1; margin-top: .3rem; }
+  ol.next { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .55rem; max-width: 46rem; }
+  footer { border-top: 1px solid var(--line); padding-top: 1.25rem; font-size: .86rem; color: var(--faint); display: flex; flex-direction: column; gap: .4rem; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">LiveBassNet · progress report · 15 October 2026</div>
+    <h1>Streaming BassNet</h1>
+    <p class="standfirst">
+      The causal BassNet trained on Slakh2100 now runs frame by frame: audio in, bass notes out, one 10 ms frame at a time.
+      This page measures what the strictly streaming version costs compared with the offline evaluation, and where its
+      remaining errors come from.
+    </p>
+    <div class="meta">
+      <span><b>Model</b> Slakh baseline, run 1 (40/40 · 36 bins/oct · causal right-aligned CQT · δ = 0)</span>
+      <span><b>Test data</b> 40 Slakh test songs (20 for the level test)</span>
+      <span><b>Hardware</b> RTX 3090; CPU with 16 threads</span>
+    </div>
+    <nav class="toc" aria-label="Contents">
+      <a href="#background">Background</a><a href="#engine">Engine and latency</a><a href="#cost">Offline vs streaming</a><a href="#lag">Reaction lag</a>
+      <a href="#onsets">Onset timing</a><a href="#jitter">Pitch jitter</a><a href="#level">Input level</a>
+      <a href="#listen">Listening</a><a href="#next">Next steps</a>
+    </nav>
+  </header>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>
+      <strong>The goal.</strong> We want a system that listens to a band playing without a bass player and plays a fitting
+      bass line along with them, live. A musician steers it with a 2-D control pad (for example: sparser or busier, lower or higher).
+    </p>
+    <p>
+      <strong>The starting point.</strong> BassNet (Grachten, Lattner and Deruty, 2020) does this offline: it takes a
+      finished recording without bass and generates a bass track for it. It looks at the music in short windows and,
+      for each 10 ms step, predicts three things about the bass: which pitch it plays, how loud it is, and whether a new
+      note starts. A small synthesiser then turns these predictions into notes and sound. A 2-D latent variable
+      <em>z</em> selects among the many bass lines that would fit the same music; it is learned without labels.
+    </p>
+    <div class="steps" aria-label="How BassNet produces a bass line">
+      <div class="step"><b>1 · Listen</b><span>The band's audio is turned into a constant-Q spectrogram (CQT): 264 frequency bins, one column every 10 ms.</span></div>
+      <div class="step"><b>2 · Predict</b><span>The network reads the last 0.4 s (40 columns) and, given z, predicts pitch, loudness and note starts for the bass.</span></div>
+      <div class="step"><b>3 · Play</b><span>Note decisions turn the predictions into notes; a synthesiser renders them as audio.</span></div>
+    </div>
+    <p>
+      <strong>Why "offline" is not enough.</strong> The original system may look at the future of the song. In a live
+      setting the future has not happened yet. So far we have (1) reimplemented BassNet from the paper, since no code was
+      available at the time, and checked it against the paper on artificial data; (2) made every part <em>causal</em>, so
+      that each prediction uses only audio that has already been heard; (3) trained it on Slakh2100, a public collection of
+      about 1,700 multitrack songs (73 hours used for training). The previous report showed that this causal model learns
+      useful bass lines and that z controls how busy the bass is.
+    </p>
+    <p>
+      <strong>What this page adds.</strong> Training and testing a model causally is still not the same as running it live.
+      The evaluation so far had small hidden look-aheads in the way windows were stitched together and in how notes were
+      decided afterwards. Here the model runs truly frame by frame, as it would on stage, and we measure (a) whether it is
+      fast enough, (b) how much quality the strictly live version loses, and (c) what causes the remaining errors.
+    </p>
+    <dl class="glossary">
+      <div><dt>Frame</dt><dd>One 10 ms time step. The system must produce each frame's output within 10 ms to keep up.</dd></div>
+      <div><dt>Causal / streaming</dt><dd>Uses only past audio. "Strictly streaming" means every decision is final the moment it is made.</dd></div>
+      <div><dt>Offline</dt><dd>The evaluation used so far, which could peek slightly ahead (up to 200 ms) when combining windows and deciding notes.</dd></div>
+      <div><dt>z (latent)</dt><dd>The 2-D control. Moving it changes the style of the bass line for the same music.</dd></div>
+      <div><dt>Pitch CCE</dt><dd>Cross-entropy of the predicted pitch distribution: lower is better. A model that ignores the music scores 3.20 on this data.</dd></div>
+      <div><dt>Within 50 cents</dt><dd>Share of frames, where the bass is playing, whose predicted pitch is the right note (50 cents = half a semitone).</dd></div>
+      <div><dt>Onset F1</dt><dd>How well predicted note starts match the real ones, within ±50 ms (1 = perfect).</dd></div>
+      <div><dt>Slakh2100</dt><dd>Songs rendered from MIDI with sampled instruments, so every instrument, including the bass, is available separately with its exact notes.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <div class="findings">
+      <div class="finding"><div class="big">6.1 ms<small>per 10 ms frame, GPU</small></div>
+        <p><strong>It runs in real time on a GPU.</strong> The full chain (incremental CQT, model, note decisions) takes 6.1 ms median and 9.7 ms worst case per frame on an RTX 3090; no frame in 30 s missed its deadline. On a CPU the model alone takes 353 ms per frame, 35 times too slow.</p></div>
+      <div class="finding"><div class="big">−0.5 pt<small>within-50-cent accuracy</small></div>
+        <p><strong>Removing the hidden look-ahead costs little at frame level.</strong> Replacing the offline overlap-averaging by one window per frame raises pitch cross-entropy from 1.92 to 1.98 and lowers within-50-cent accuracy from 60.2% to 59.7%.</p></div>
+      <div class="finding bad"><div class="big">~300 ms<small>to follow a pitch change</small></div>
+        <p><strong>The bass reacts late.</strong> In the first 50 ms after the real bass changes note, only 18% of predicted frames have the right pitch; it takes about 300 ms to reach 60% and 500 ms to settle near 68%. Those first 300 ms are 31% of all frames but 46% of all errors. Reacting instantly would lift overall accuracy from 58.8% to 67.9%.</p></div>
+      <div class="finding mid"><div class="big">+30 ms<small>onset target vs MIDI, median</small></div>
+        <p><strong>Onsets are late by construction.</strong> The model's onset peaks come a median 30 ms after the MIDI note starts, exactly like the training targets themselves, which were delayed by 2 frames to keep them causal. A note tracker that waits one more frame to confirm a peak loses about a quarter of its matches.</p></div>
+      <div class="finding mid"><div class="big">3.5×<small>more pitch changes than real bass</small></div>
+        <p><strong>Frame-wise output is jittery.</strong> The streaming argmax pitch changes 4.3 times per 100 frames, against 1.2 for the real bass. A simple causal filter brings this to 1.7 at a cost of 0.6 points of accuracy.</p></div>
+      <div class="finding mid" id="finding-level"><div class="big">−3.6 pt<small>within 50 cents at ±12 dB</small></div>
+        <p><strong>The model depends on the input level.</strong> A ±6 dB change in mix level costs about one point of within-50-cent accuracy; ±12 dB costs 3.6 points, and −24 dB costs 13.5. Training mixes were peak-normalised per song, which a live system cannot do.</p></div>
+    </div>
+  </section>
+
+  <section id="engine">
+    <h2>Engine and latency</h2>
+    <p class="lede">
+      The engine keeps the last 2.05 s of audio in a ring buffer. For every new 160-sample hop it computes one CQT frame
+      as a matrix product with the right-aligned kernels, appends it to a 40-frame window, runs the decoder with a
+      user-given z and keeps only the newest frame. Streaming CQT frames match the offline CQT to within 3·10⁻⁴
+      (features are stored in float16). Times are for 30 s of audio after a 0.5 s warm-up.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Per 10 ms frame</th><th class="num">GPU median</th><th class="num">GPU p95</th><th class="num">GPU max</th><th class="num">CPU median</th><th class="num">CPU p95</th></tr></thead>
+      <tbody>
+        <tr><td>Incremental CQT</td><td class="num">0.26 ms</td><td class="num">0.30 ms</td><td class="num">0.91 ms</td><td class="num">2.4 ms</td><td class="num">2.8 ms</td></tr>
+        <tr><td>Model (decoder, one 40-frame window)</td><td class="num">5.81 ms</td><td class="num">6.05 ms</td><td class="num">9.43 ms</td><td class="num">353 ms</td><td class="num">485 ms</td></tr>
+        <tr><td>Note decisions</td><td class="num">0.01 ms</td><td class="num">0.01 ms</td><td class="num">0.24 ms</td><td class="num">0.02 ms</td><td class="num">0.03 ms</td></tr>
+        <tr class="hl"><td>Total</td><td class="num">6.08 ms</td><td class="num">6.33 ms</td><td class="num">9.69 ms</td><td class="num">356 ms</td><td class="num">487 ms</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">
+      The CPU cost comes from re-running the model over the whole 40 × 264 window every frame. Two savings are available
+      without retraining: cache the convolution states so only the newest time column is computed, and cache the z branch,
+      which does not change while z is fixed.
+    </p>
+  </section>
+
+  <section id="cost">
+    <h2>Offline vs strictly streaming</h2>
+    <p class="lede">
+      Same checkpoint, same 40 test songs, z taken from the encoder in all rows. "Offline" is the evaluation used so far:
+      a window every 20 frames with overlaps averaged, which lets a frame see up to 200 ms of later audio, and notes whose
+      pitch is the median over the whole note. "Streaming" uses one window per frame and decides every note at the moment
+      it starts.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Frame level</th><th class="num">Pitch CCE</th><th class="num">Within 50 cents</th><th class="num">Level BCE</th><th class="num">Onset BCE</th></tr></thead>
+      <tbody>
+        <tr class="ref"><td>Offline (overlap-averaged)</td><td class="num">1.924</td><td class="num">60.2%</td><td class="num">0.557</td><td class="num">0.119</td></tr>
+        <tr class="hl"><td>Streaming (newest frame only)</td><td class="num">1.984</td><td class="num">59.7%</td><td class="num">0.558</td><td class="num">0.125</td></tr>
+      </tbody>
+    </table></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Note level, against MIDI (±50 ms)</th><th class="num">Onset F1</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">Right pitch, matched notes</th></tr></thead>
+      <tbody>
+        <tr class="ref"><td>Offline predictions, offline notes</td><td class="num">0.537</td><td class="num">0.480</td><td class="num">0.610</td><td class="num">59.8%</td></tr>
+        <tr class="ref"><td>Streaming predictions, offline notes</td><td class="num">0.527</td><td class="num">0.490</td><td class="num">0.572</td><td class="num">59.9%</td></tr>
+        <tr class="hl"><td>Streaming, note on at threshold crossing (0 frames)</td><td class="num">0.615</td><td class="num">0.572</td><td class="num">0.665</td><td class="num">40.8%</td></tr>
+        <tr><td>Streaming, note on 1 frame after the peak</td><td class="num">0.454</td><td class="num">0.422</td><td class="num">0.492</td><td class="num">40.3%</td></tr>
+        <tr><td>Streaming, note on 2 frames after the peak</td><td class="num">0.336</td><td class="num">0.312</td><td class="num">0.363</td><td class="num">39.2%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">
+      Two effects stand out. Pitch accuracy of notes drops from 60% to 41% once the pitch must be chosen at the onset
+      instead of from the whole note: this is the reaction lag below. And onset F1 falls with every frame of confirmation,
+      because predicted onsets already sit near the late edge of the ±50 ms window.
+    </p>
+  </section>
+
+  <section id="lag">
+    <h2>Reaction lag after pitch changes</h2>
+    <figure>
+      <img src="accuracy_vs_change.png" alt="Line chart: semitone accuracy of the streaming prediction against time since the true bass changed pitch. It rises from about 0.18 at 0–50 ms to 0.6 at 300 ms and levels off around 0.68 to 0.72 after 500 ms.">
+      <figcaption>Semitone accuracy of the streaming prediction against the time since the real bass last changed pitch (MIDI, sounding pitch), 40 test songs.</figcaption>
+    </figure>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Time since the real bass changed note</th><th class="num">0–50 ms</th><th class="num">100–150 ms</th><th class="num">200–250 ms</th><th class="num">300–350 ms</th><th class="num">500–550 ms</th><th class="num">&gt; 1 s</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>Semitone accuracy</td><td class="num">17.7%</td><td class="num">42.2%</td><td class="num">53.4%</td><td class="num">60.1%</td><td class="num">63.9%</td><td class="num">≈ 68%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">
+      A causal model only learns that the harmony has moved after it hears it in the mix, and the low CQT bands
+      integrate over about a second. Bass players, by contrast, change chord together with the band. This is the largest
+      single source of pitch errors we have found: 46% of all errors, with an upper bound of +9 points of accuracy if it
+      were removed. It points to giving the model a way to anticipate: longer context to learn the song's repetitions,
+      beat and bar position as inputs, and onset targets aligned to the true note starts.
+    </p>
+  </section>
+
+  <section id="onsets">
+    <h2>Onset timing</h2>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Peak time minus MIDI note start (10 songs)</th><th class="num">Median</th><th class="num">Upper quartile</th><th class="num">Onsets</th></tr></thead>
+      <tbody>
+        <tr><td>Training target (madmom, delayed 2 frames for causality)</td><td class="num">+30 ms</td><td class="num">+50 ms</td><td class="num">4694</td></tr>
+        <tr class="hl"><td>Model prediction (streaming)</td><td class="num">+30 ms</td><td class="num">+50 ms</td><td class="num">3723</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">
+      The model reproduces its target's timing; the lateness is in the target. Since Slakh comes with MIDI, the onset
+      target can be aligned to the true note starts, and an onset-specific anticipation can then be traded against
+      accuracy like δ.
+    </p>
+  </section>
+
+  <section id="jitter">
+    <h2>Pitch jitter and causal smoothing</h2>
+    <p class="lede">
+      The model has no memory of what it played, so the frame-wise pitch flips more often than a bass player would.
+      A forward filter over semitones (stay probability p, otherwise uniform) is causal and needs no retraining.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Streaming pitch</th><th class="num">Semitone accuracy</th><th class="num">Pitch changes per 100 frames</th></tr></thead>
+      <tbody>
+        <tr class="ref"><td>Real bass (MIDI)</td><td class="num">—</td><td class="num">1.22</td></tr>
+        <tr><td>No smoothing</td><td class="num">58.8%</td><td class="num">4.33</td></tr>
+        <tr class="hl"><td>Forward filter, p = 0.5</td><td class="num">58.1%</td><td class="num">1.67</td></tr>
+        <tr><td>Forward filter, p = 0.9</td><td class="num">57.8%</td><td class="num">1.44</td></tr>
+        <tr><td>Forward filter, p = 0.95</td><td class="num">57.7%</td><td class="num">1.38</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="level">
+    <h2>Input level</h2>
+    <p class="lede">
+      Training mixes were peak-normalised per song, which a live system cannot do. A gain on the mix is applied exactly on
+      the stored log-CQT features; 20 test songs, streaming predictions.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Mix gain</th><th class="num">Pitch CCE</th><th class="num">Within 50 cents</th><th class="num">Level BCE</th><th class="num">Onset BCE</th></tr></thead>
+      <tbody>
+        <tr><td>−24 dB</td><td class="num">2.404</td><td class="num">47.6%</td><td class="num">0.620</td><td class="num">0.178</td></tr>
+        <tr><td>−12 dB</td><td class="num">2.118</td><td class="num">57.6%</td><td class="num">0.575</td><td class="num">0.153</td></tr>
+        <tr><td>−6 dB</td><td class="num">2.046</td><td class="num">59.9%</td><td class="num">0.571</td><td class="num">0.148</td></tr>
+        <tr class="hl"><td>0 dB (as trained)</td><td class="num">2.022</td><td class="num">61.2%</td><td class="num">0.571</td><td class="num">0.146</td></tr>
+        <tr><td>+6 dB</td><td class="num">2.058</td><td class="num">60.5%</td><td class="num">0.575</td><td class="num">0.147</td></tr>
+        <tr><td>+12 dB</td><td class="num">2.161</td><td class="num">57.6%</td><td class="num">0.582</td><td class="num">0.152</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">The model tolerates ±6 dB but degrades beyond that, more steeply for quiet input. Gain augmentation during training, or a causal running normalisation used both in training and live, should remove this.</p>
+  </section>
+
+  <section id="listen">
+    <h2>Listening: offline vs streaming</h2>
+    <p class="lede">
+      Three test songs, 30 s each. "Offline" clips are those of the previous report; "streaming" clips use one window per
+      frame and the causal note tracker (one confirmation frame), so every note is decided when it starts. Generated bass
+      uses a General MIDI bass from FluidSynth.
+    </p>
+    <div class="note"><b>Not yet listened to</b>These clips were produced by script. Please listen before the presentation, especially to the streaming reconstructions, where late note changes should be audible.</div>
+    <div class="songs" id="songs"></div>
+  </section>
+
+  <section id="next">
+    <h2>What this changes in the plan</h2>
+    <ol class="next">
+      <li><strong>Anticipation is the main research problem.</strong> Reaction lag accounts for nearly half the pitch errors. Next experiments: the longer multi-resolution window (10/640), beat and bar position as input, and onset targets aligned to MIDI.</li>
+      <li><strong>Build the CPU path.</strong> Cache convolution states and the z branch; target under 5 ms per frame.</li>
+      <li><strong>Put the causal filter in the engine.</strong> It cuts jitter by 60% for 0.6 points of accuracy.</li>
+      <li><strong>Train with gain augmentation</strong> or a causal running normalisation, so the input level stops mattering.</li>
+      <li><strong>Then the live prototype:</strong> audio I/O, MIDI out to a synthesiser, latency measured end to end.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>Code: bassnet/streaming/{engine,simulate,sensitivity,demo}.py. Results: runs/slakh_40_40_causal_ra/streaming{,_fast}/.</p>
+    <p>All numbers are measured on the Slakh test split with the run-1 checkpoint; "offline" figures differ slightly from the previous report because they cover 40 of the 130 test songs.</p>
+  </footer>
+
+</div>
+
+<script>
+  const songs = [
+    { id: "Track01881", note: "busy groove" },
+    { id: "Track01945", note: "medium density" },
+    { id: "Track02029", note: "sparse" },
+  ];
+  const clips = [
+    ["Reference", [["original", "Original", "real bass"], ["oracle", "Ceiling", "true descriptors → same synth"]]],
+    ["Reconstruction (z from the encoder)", [["zenc", "Offline", "averaged windows, notes decided afterwards"], ["stream_zenc", "Streaming", "frame by frame, causal notes"]]],
+    ["z = (0, 0)", [["z0_0", "Offline", ""], ["stream_z0_0", "Streaming", ""]]],
+    ["Density control, streaming", [["stream_zm1.5_0", "z = (−1.5, 0)", "sparse"], ["stream_z1.5_0", "z = (1.5, 0)", "busy"]]],
+  ];
+  const root = document.getElementById("songs");
+  for (const s of songs) {
+    const card = document.createElement("div");
+    card.className = "song";
+    card.innerHTML = `<h3>${s.id} <small style="font-family:var(--mono);font-weight:400;color:var(--faint);font-size:.78rem">${s.note}</small></h3>`;
+    const grid = document.createElement("div");
+    grid.className = "clips";
+    for (const [group, items] of clips) {
+      const g = document.createElement("div");
+      g.className = "group-label"; g.textContent = group; grid.appendChild(g);
+      for (const [tag, label, sub] of items) {
+        const id = `a-${s.id}-${tag}`;
+        const c = document.createElement("div");
+        c.className = "clip";
+        c.innerHTML = `<label for="${id}">${label}${sub ? `<small>${sub}</small>` : ""}</label>` +
+          `<audio id="${id}" controls preload="none" src="audio/${s.id}_${tag}.mp3"></audio>`;
+        grid.appendChild(c);
+      }
+    }
+    card.appendChild(grid);
+    root.appendChild(card);
+  }
+  document.addEventListener("play", e => {
+    for (const a of document.querySelectorAll("audio")) if (a !== e.target) a.pause();
+  }, true);
+</script>
+
+</html>

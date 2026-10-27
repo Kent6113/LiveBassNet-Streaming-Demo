@@ -1,0 +1,14 @@
+{
+ "run": "slakh_10_640_causal_ra_w64_login",
+ "window": "10/640",
+ "compressed": 10,
+ "expanded": 640,
+ "channels": 7,
+ "bins": 264,
+ "width": 64,
+ "latent_dim": 2,
+ "input_scale": "log",
+ "x_amin": 0.0001,
+ "x_mean": -3.311573028564453,
+ "x_std": 2.153075933456421
+}

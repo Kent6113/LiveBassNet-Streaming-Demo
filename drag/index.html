@@ -1,0 +1,381 @@
+<title>LiveBassNet Pad</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: an instrument face. The pad is the instrument; transport, mixer and a
+   scrolling bass roll sit around it like the panel of a hardware unit. */
+:root {
+  --bg: #f3f4f1;
+  --panel: #ffffff;
+  --ink: #1b1f1d;
+  --muted: #5d6662;
+  --line: #d9ddd8;
+  --accent: #0f7c74;
+  --accent-soft: rgba(15,124,116,.16);
+  --real: #8a6b3d;
+  --heat: 15,124,116;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111413; --panel: #191d1b; --ink: #e8ece9; --muted: #98a39e; --line: #2c3330;
+  --accent: #4fd1c1; --accent-soft: rgba(79,209,193,.18); --real: #d6b07a; --heat: 79,209,193; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111413; --panel: #191d1b; --ink: #e8ece9; --muted: #98a39e; --line: #2c3330;
+  --accent: #4fd1c1; --accent-soft: rgba(79,209,193,.18); --real: #d6b07a; --heat: 79,209,193; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+header h1 { font-family: var(--display); font-weight: 600; font-size: 30px; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 68ch; }
+.main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.label { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.padbox { position: relative; }
+#pad { display: block; width: 100%; aspect-ratio: 1; max-width: 100%; touch-action: none; cursor: crosshair; border-radius: 6px; }
+#pad:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.padaxes { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); gap: 8px; flex-wrap: wrap; }
+.side { display: grid; gap: 16px; min-width: 0; }
+.songs { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font: 500 13px var(--mono); border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 6px 10px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.transport { display: flex; gap: 12px; align-items: center; }
+#play { font: 600 15px var(--body); background: var(--accent); color: var(--panel); border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer; min-width: 96px; }
+#play:disabled { opacity: .5; cursor: progress; }
+#seek { flex: 1; min-width: 0; accent-color: var(--accent); }
+#time { font: 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.readout div { display: grid; gap: 2px; }
+.readout b { font: 500 20px var(--mono); font-variant-numeric: tabular-nums; }
+.mixer { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 44px; gap: 10px; align-items: center; }
+.row input[type=range] { width: 100%; accent-color: var(--accent); }
+.row output { font: 12px var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.toggles { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.toggles label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.toggles input { accent-color: var(--accent); }
+#roll { display: block; width: 100%; height: 200px; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.sw { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.notes { color: var(--muted); font-size: 13.5px; max-width: 75ch; display: grid; gap: 6px; }
+.notes p { margin: 0; }
+#status { font: 12px var(--mono); color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>LiveBassNet Pad</h1>
+    <p>Press play, then drag the point on the pad. The bass line is generated by a strictly causal BassNet that hears only the band up to the current 10&nbsp;ms frame; moving the point changes the latent z, and the bass follows from the next frame on.</p>
+  </header>
+
+  <div class="main">
+    <section class="panel padbox" aria-label="Latent pad">
+      <div class="label" style="margin-bottom:8px">Latent z · shading = notes per minute at that z</div>
+      <canvas id="pad" tabindex="0" aria-label="Latent pad. Drag, or use the arrow keys, to move z."></canvas>
+      <div class="padaxes"><span id="zl">← z₁</span><span>◆ z of the real bass</span><span id="zr">z₁ →</span></div>
+    </section>
+
+    <div class="side">
+      <section class="panel" style="display:grid;gap:14px">
+        <div class="label">Song excerpt (Slakh2100 test set, 0:60–1:30)</div>
+        <div class="songs" id="songs"></div>
+        <div class="transport">
+          <button id="play" type="button" disabled>Loading</button>
+          <input id="seek" type="range" min="0" max="3000" value="0" step="1" aria-label="Position">
+          <span id="time">0:00.0 / 0:30</span>
+        </div>
+        <div id="status">Loading model output…</div>
+      </section>
+
+      <section class="panel readout" aria-live="polite">
+        <div><span class="label">z₁, z₂</span><b id="zval">0.00, 0.00</b></div>
+        <div><span class="label">Notes / min here</span><b id="npm">–</b></div>
+        <div><span class="label">Playing</span><b id="note">–</b></div>
+      </section>
+
+      <section class="panel mixer">
+        <div class="label">Mixer</div>
+        <div class="row"><label for="vBand">Band</label><input id="vBand" type="range" min="0" max="100" value="70"><output for="vBand">70</output></div>
+        <div class="row"><label for="vGen">Generated bass</label><input id="vGen" type="range" min="0" max="100" value="80"><output for="vGen">80</output></div>
+        <div class="row"><label for="vReal">Real bass</label><input id="vReal" type="range" min="0" max="100" value="0"><output for="vReal">0</output></div>
+        <div class="row"><label for="thr">Onset threshold</label><input id="thr" type="range" min="2" max="50" value="10"><output for="thr">0.10</output></div>
+        <div class="toggles">
+          <label><input id="glide" type="checkbox" checked> Follow pitch inside a note</label>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" style="display:grid;gap:10px">
+    <div class="label">Bass roll · last 4 seconds</div>
+    <canvas id="roll" aria-label="Scrolling piano roll of the generated and the real bass"></canvas>
+    <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>Generated (what you hear)</span><span><i class="sw" style="background:var(--real)"></i>Real bass (MIDI)</span></div>
+  </section>
+
+  <section class="notes">
+    <p><b>How it works.</b> BassNet's output at a frame depends only on the band audio up to that frame and on z; it never reads its own earlier output. The model's frame-by-frame output (pitch, level, onset) was therefore computed in advance on a 21 × 21 grid of z for each excerpt, and the page reads the grid point under the cursor at every frame, so what you hear is what the live model produces at that z (z is rounded to the nearest grid point, 0.3 apart). Notes are decided causally in the browser: a note starts one frame after the onset curve peaks above the threshold (the curve must first fall back below 0.6 × the threshold), and a simple four-harmonic synth plays it.</p>
+    <p id="modelnote"></p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let M = null, song = 0, data = null, W = 0;           // data: RGBA of the song's grid image
+  const cache = {};
+  let ctx = null, master = null, bandGain, realGain, genGain, osc, filt, amp;
+  let bandBuf = null, realBuf = null, srcs = [], playing = false, t0 = 0, startFrame = 0, nextFrame = 0, timer = null;
+  let zx = 0, zy = 0;                                   // grid indices of the puck
+  let played = null;                                    // generated MIDI per frame (0 = silent)
+  const tracker = { last: -1e9, active: false, midi: 0, armed: true };
+
+  const NOTE = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+  const noteName = m => m > 0 ? NOTE[m % 12] + (Math.floor(m / 12) - 1) : '–';
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+
+  // ---------- data ----------
+  async function loadManifest() {
+    M = await (await fetch('manifest.json')).json();
+    $('thr').value = Math.round(M.threshold * 100); $('thr').nextElementSibling.textContent = M.threshold.toFixed(2);
+    const c = Math.floor(M.g / 2); zx = c; zy = c;
+    $('songs').innerHTML = '';
+    M.songs.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.type = 'button'; b.textContent = s.name; b.setAttribute('aria-pressed', i === 0);
+      b.onclick = () => selectSong(i);
+      $('songs').appendChild(b);
+    });
+    $('modelnote').textContent = `Model: ${M.model} (window ${M.window}, log-magnitude input, trained on Slakh2100). The default onset threshold (${M.threshold.toFixed(2)}) makes the note rate at the real bass's z match the real bass over the three excerpts.`;
+    $('seek').max = M.frames - 1;
+    $('zl').textContent = `← z₁ −${M.zmax}`; $('zr').textContent = `z₁ +${M.zmax} →`;
+    await selectSong(0);
+  }
+
+  async function loadSong(i) {
+    if (cache[i]) return cache[i];
+    const s = M.songs[i];
+    const img = new Image(); img.src = s.png; await img.decode();
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    const c2 = cv.getContext('2d', { willReadFrequently: true });
+    c2.drawImage(img, 0, 0);
+    const px = c2.getImageData(0, 0, img.width, img.height).data;
+    const [band, real] = await Promise.all([s.band, s.realbass].map(u => fetch(u).then(r => r.arrayBuffer())));
+    cache[i] = { px, w: img.width, band, real, bandBuf: null, realBuf: null };
+    return cache[i];
+  }
+
+  async function selectSong(i) {
+    const wasPlaying = playing; stop();
+    song = i;
+    [...$('songs').children].forEach((b, k) => b.setAttribute('aria-pressed', k === i));
+    $('play').disabled = true; $('play').textContent = 'Loading'; $('status').textContent = `Loading ${M.songs[i].name}…`;
+    const c = await loadSong(i);
+    data = c.px; W = c.w;
+    played = new Uint8Array(M.frames);
+    $('seek').value = 0; startFrame = 0;
+    $('play').disabled = false; $('play').textContent = 'Play';
+    $('status').textContent = `${M.songs[i].name}: real bass ${M.songs[i].real_notes_per_min} notes/min`;
+    drawPad(); drawRoll(0); readout();
+    if (wasPlaying) start();
+  }
+
+  const at = (g, t) => { const k = (g * W + t) * 4; return [data[k], data[k + 1] / 255, data[k + 2] / 255]; };
+  const gIndex = () => zy * M.g + zx;
+
+  // ---------- audio ----------
+  function initAudio() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+    bandGain = ctx.createGain(); realGain = ctx.createGain(); genGain = ctx.createGain();
+    [bandGain, realGain, genGain].forEach(g => g.connect(master));
+    osc = ctx.createOscillator();
+    const real = new Float32Array([0, 1, 0.5, 0.33, 0.12]), imag = new Float32Array(5);
+    osc.setPeriodicWave(ctx.createPeriodicWave(real, imag));
+    filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 500; filt.Q.value = 3;
+    amp = ctx.createGain(); amp.gain.value = 0;
+    osc.connect(filt); filt.connect(amp); amp.connect(genGain);
+    osc.start();
+    mixer();
+  }
+
+  async function buffers() {
+    const c = cache[song];
+    if (!c.bandBuf) c.bandBuf = await ctx.decodeAudioData(c.band.slice(0));
+    if (!c.realBuf) c.realBuf = await ctx.decodeAudioData(c.real.slice(0));
+    return c;
+  }
+
+  async function start() {
+    initAudio(); await ctx.resume();
+    const c = await buffers();
+    startFrame = +$('seek').value;
+    t0 = ctx.currentTime + 0.08 - startFrame / M.fps;
+    srcs = [[c.bandBuf, bandGain], [c.realBuf, realGain]].map(([buf, g]) => {
+      const s = ctx.createBufferSource(); s.buffer = buf; s.connect(g);
+      s.start(t0 + startFrame / M.fps, startFrame / M.fps); return s;
+    });
+    nextFrame = startFrame; tracker.last = -1e9; tracker.active = false; tracker.armed = true;
+    played.fill(0, startFrame);
+    playing = true; $('play').textContent = 'Pause';
+    timer = setInterval(schedule, 20);
+    requestAnimationFrame(tick);
+  }
+
+  function stop() {
+    if (!playing) return;
+    playing = false; clearInterval(timer);
+    srcs.forEach(s => { try { s.stop(); } catch (e) {} }); srcs = [];
+    if (amp) { amp.gain.cancelScheduledValues(ctx.currentTime); amp.gain.setTargetAtTime(0, ctx.currentTime, 0.02); }
+    $('play').textContent = 'Play';
+  }
+
+  function schedule() {
+    const now = Math.floor((ctx.currentTime - t0) * M.fps);
+    const until = Math.min(M.frames - 1, now + 8);       // 80 ms look-ahead for the audio clock only
+    const thr = $('thr').value / 100, glide = $('glide').checked, g = gIndex();
+    for (; nextFrame <= until; nextFrame++) {
+      const t = nextFrame, when = t0 + t / M.fps;
+      const [m, lv] = at(g, t);
+      let fire = false;
+      if (t >= 2) {
+        const o0 = at(g, t - 2)[2], o1 = at(g, t - 1)[2], o2 = at(g, t)[2];
+        if (o2 < thr * M.rearm) tracker.armed = true;
+        fire = tracker.armed && o1 >= thr && o1 >= o0 && o1 > o2 && (t - 1) - tracker.last >= 5;
+      }
+      if (fire) {
+        tracker.last = t - 1; tracker.armed = false;
+        if (lv >= 0.05) {
+          tracker.active = true; tracker.midi = m;
+          const peak = Math.min(1, 0.25 + lv) * 0.55;
+          amp.gain.cancelScheduledValues(when);
+          amp.gain.setValueAtTime(0.0001, when);
+          amp.gain.linearRampToValueAtTime(peak, when + 0.006);
+          amp.gain.setTargetAtTime(peak * 0.55, when + 0.006, 0.35);
+          osc.frequency.setValueAtTime(hz(m), when);
+          filt.frequency.cancelScheduledValues(when);
+          filt.frequency.setValueAtTime(1100, when);
+          filt.frequency.setTargetAtTime(420, when + 0.004, 0.12);
+        }
+      } else if (tracker.active && lv < 0.05) {
+        tracker.active = false;
+        amp.gain.cancelScheduledValues(when);
+        amp.gain.setTargetAtTime(0, when, 0.03);
+      } else if (tracker.active && glide && m > 0 && m !== tracker.midi) {
+        tracker.midi = m;
+        osc.frequency.setTargetAtTime(hz(m), when, 0.015);
+      }
+      played[t] = tracker.active ? tracker.midi : 0;
+    }
+    if (now >= M.frames - 1) { stop(); $('seek').value = 0; }
+  }
+
+  function tick() {
+    if (!playing) return;
+    const f = Math.max(0, Math.min(M.frames - 1, Math.floor((ctx.currentTime - t0) * M.fps)));
+    $('seek').value = f;
+    $('time').textContent = `${fmt(f / M.fps)} / ${fmt(M.frames / M.fps).slice(0, -2)}`;
+    $('note').textContent = noteName(played[f]);
+    drawRoll(f);
+    requestAnimationFrame(tick);
+  }
+
+  function mixer() {
+    const v = id => { const x = $(id).value / 100; $(id).nextElementSibling.textContent = $(id).value; return x * x; };
+    const b = v('vBand'), gg = v('vGen'), r = v('vReal');
+    if (!ctx) return;
+    bandGain.gain.setTargetAtTime(b, ctx.currentTime, 0.02);
+    genGain.gain.setTargetAtTime(gg, ctx.currentTime, 0.02);
+    realGain.gain.setTargetAtTime(r * 1.4, ctx.currentTime, 0.02);
+  }
+
+  // ---------- pad ----------
+  const pad = $('pad');
+  function sizeCanvas(cv) {
+    const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d);
+    return d;
+  }
+  function drawPad() {
+    if (!M) return;
+    const d = sizeCanvas(pad), c = pad.getContext('2d'), S = pad.width, G = M.g, cell = S / G;
+    const s = M.songs[song], npm = s.notes_per_min, maxN = Math.max(...npm, 1);
+    c.fillStyle = css('--panel'); c.fillRect(0, 0, S, S);
+    for (let iy = 0; iy < G; iy++) for (let ix = 0; ix < G; ix++) {
+      const v = npm[iy * G + ix] / maxN;
+      c.fillStyle = `rgba(${css('--heat')},${(0.04 + 0.62 * Math.sqrt(v)).toFixed(3)})`;
+      c.fillRect(ix * cell, (G - 1 - iy) * cell, cell + 0.5, cell + 0.5);
+    }
+    c.strokeStyle = css('--line'); c.lineWidth = d;
+    c.beginPath(); c.moveTo(S / 2, 0); c.lineTo(S / 2, S); c.moveTo(0, S / 2); c.lineTo(S, S / 2); c.stroke();
+    // real-bass z
+    const toPx = z => (z + M.zmax) / (2 * M.zmax) * (S - cell) + cell / 2;
+    const rx = toPx(s.z_real[0]), ry = S - toPx(s.z_real[1]), r = 7 * d;
+    c.fillStyle = css('--real'); c.beginPath(); c.moveTo(rx, ry - r); c.lineTo(rx + r, ry); c.lineTo(rx, ry + r); c.lineTo(rx - r, ry); c.closePath(); c.fill();
+    // puck
+    const px = zx * cell + cell / 2, py = (G - 1 - zy) * cell + cell / 2;
+    c.fillStyle = css('--accent'); c.strokeStyle = css('--panel'); c.lineWidth = 3 * d;
+    c.beginPath(); c.arc(px, py, 10 * d, 0, 2 * Math.PI); c.fill(); c.stroke();
+    c.fillStyle = css('--muted'); c.font = `${11 * d}px ${css('--mono')}`;
+    c.fillText(`z₂ +${M.zmax}`, 6 * d, 14 * d); c.fillText(`z₂ −${M.zmax}`, 6 * d, S - 6 * d);
+  }
+  function readout() {
+    $('zval').textContent = `${M.axis[zx].toFixed(2)}, ${M.axis[zy].toFixed(2)}`;
+    $('npm').textContent = M.songs[song].notes_per_min[gIndex()].toFixed(0);
+  }
+  function moveTo(ev) {
+    const r = pad.getBoundingClientRect(), G = M.g;
+    zx = Math.max(0, Math.min(G - 1, Math.floor((ev.clientX - r.left) / r.width * G)));
+    zy = Math.max(0, Math.min(G - 1, G - 1 - Math.floor((ev.clientY - r.top) / r.height * G)));
+    drawPad(); readout();
+  }
+  let dragging = false;
+  pad.addEventListener('pointerdown', e => { if (!M) return; dragging = true; pad.setPointerCapture(e.pointerId); moveTo(e); });
+  pad.addEventListener('pointermove', e => { if (dragging) moveTo(e); });
+  pad.addEventListener('pointerup', () => { dragging = false; });
+  pad.addEventListener('keydown', e => {
+    if (!M) return;
+    const k = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    if (!k) return; e.preventDefault();
+    zx = Math.max(0, Math.min(M.g - 1, zx + k[0])); zy = Math.max(0, Math.min(M.g - 1, zy + k[1]));
+    drawPad(); readout();
+  });
+
+  // ---------- roll ----------
+  const roll = $('roll');
+  function drawRoll(f) {
+    if (!M) return;
+    const d = sizeCanvas(roll), c = roll.getContext('2d'), Wd = roll.width, H = roll.height;
+    const span = 400, lo = 26, hi = 62, y = m => H - (m - lo) / (hi - lo) * H, x = t => (t - (f - span)) / span * Wd;
+    c.fillStyle = css('--panel'); c.fillRect(0, 0, Wd, H);
+    c.strokeStyle = css('--line'); c.lineWidth = d; c.fillStyle = css('--muted'); c.font = `${10 * d}px ${css('--mono')}`;
+    for (let m = 28; m <= hi; m += 12) { c.beginPath(); c.moveTo(0, y(m)); c.lineTo(Wd, y(m)); c.stroke(); c.fillText(noteName(m), 4 * d, y(m) - 3 * d); }
+    const real = M.songs[song].real_midi, bar = (H / (hi - lo)) * 0.8;
+    const draw = (arr, col, h) => {
+      c.fillStyle = col;
+      for (let t = Math.max(0, f - span); t <= f; t++) { const m = arr[t]; if (m > 0) c.fillRect(x(t), y(m) - h / 2, Wd / span + 0.6, h); }
+    };
+    draw(real, css('--real'), bar * 0.45);
+    if (played) draw(played, css('--accent'), bar);
+    c.strokeStyle = css('--muted'); c.beginPath(); c.moveTo(Wd - 1, 0); c.lineTo(Wd - 1, H); c.stroke();
+  }
+
+  // ---------- wiring ----------
+  $('play').onclick = () => playing ? stop() : start();
+  ['vBand', 'vGen', 'vReal'].forEach(id => $(id).addEventListener('input', mixer));
+  $('thr').addEventListener('input', () => { $('thr').nextElementSibling.textContent = ($('thr').value / 100).toFixed(2); });
+  $('seek').addEventListener('change', () => { if (playing) { stop(); start(); } else drawRoll(+$('seek').value); });
+  window.addEventListener('resize', () => { drawPad(); drawRoll(+$('seek').value); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { drawPad(); drawRoll(+$('seek').value); });
+  mixer();
+  loadManifest().catch(e => { $('status').textContent = 'Could not load the model output: ' + e.message; });
+})();
+</script>

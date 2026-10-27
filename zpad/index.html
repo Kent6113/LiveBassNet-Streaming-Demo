@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BassNet Z-Pad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;1,400&display=swap">
+<style>
+  :root {
+    --ground: #f3f6f6; --surface: #ffffff; --sunken: #eaefef;
+    --ink: #0e1a1c; --muted: #566b6e; --faint: #7d9093;
+    --line: #d9e2e1; --line-strong: #b9c8c7;
+    --accent: #0d6b70; --accent-ink: #ffffff; --accent-soft: #d7e8e8;
+    --cell-lo: #e6efef; --cell-hi: #0d6b70;
+    --warn: #a2661b;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "IBM Plex Serif", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0c1315; --surface: #131e20; --sunken: #0f191b;
+      --ink: #e4ecea; --muted: #9db0b1; --faint: #7b9092;
+      --line: #24363a; --line-strong: #38504f;
+      --accent: #58bfc2; --accent-ink: #0c1315; --accent-soft: #16383a;
+      --cell-lo: #16272a; --cell-hi: #58bfc2;
+      --warn: #d9a45c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0c1315; --surface: #131e20; --sunken: #0f191b;
+    --ink: #e4ecea; --muted: #9db0b1; --faint: #7b9092;
+    --line: #24363a; --line-strong: #38504f;
+    --accent: #58bfc2; --accent-ink: #0c1315; --accent-soft: #16383a;
+    --cell-lo: #16272a; --cell-hi: #58bfc2;
+    --warn: #d9a45c;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55;
+         -webkit-font-smoothing: antialiased; padding-inline: 16px; }
+  .wrap { max-width: 62rem; margin: 0 auto; padding-block: 2.5rem 4rem; display: flex; flex-direction: column; gap: 1.8rem; }
+  header { display: flex; flex-direction: column; gap: .7rem; }
+  .eyebrow { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-weight: 600; font-size: clamp(1.8rem, 4.5vw, 2.4rem); line-height: 1.1; letter-spacing: -.015em; margin: 0; }
+  .intro { font-family: var(--serif); font-size: 1.02rem; color: var(--muted); margin: 0; max-width: 46rem; }
+  .songs { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .songs button { font: inherit; font-size: .86rem; padding: .4rem .8rem; border: 1px solid var(--line-strong);
+                  background: var(--surface); color: var(--ink); border-radius: 2px; cursor: pointer; }
+  .songs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .songs button small { font-family: var(--mono); font-size: .72rem; opacity: .75; margin-left: .35rem; }
+  .stage { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.8rem; align-items: start; }
+  @media (max-width: 760px) { .stage { grid-template-columns: 1fr; } }
+  .padbox { display: grid; grid-template-columns: 1.6rem 1fr; grid-template-rows: 1fr 1.6rem; gap: .3rem; }
+  .ylab { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: .74rem; color: var(--faint); align-self: center; }
+  .xlab { grid-column: 2; text-align: center; font-size: .74rem; color: var(--faint); }
+  .pad { position: relative; aspect-ratio: 1; max-width: 100%; display: grid; grid-template-columns: repeat(5, 1fr);
+         grid-template-rows: repeat(5, 1fr); gap: 3px; background: var(--line); border: 1px solid var(--line-strong);
+         touch-action: none; user-select: none; cursor: crosshair; }
+  .cell { border: 0; padding: 0; margin: 0; position: relative; font: inherit; cursor: pointer;
+          display: flex; align-items: flex-end; justify-content: flex-end; }
+  .cell span { font-family: var(--mono); font-size: .68rem; padding: .2rem .3rem; color: var(--ink); opacity: .85;
+               font-variant-numeric: tabular-nums; }
+  .cell.on { outline: 3px solid var(--ink); outline-offset: -3px; z-index: 1; }
+  .cell:focus-visible { outline: 3px solid var(--warn); outline-offset: -3px; z-index: 2; }
+  .cell .dot { position: absolute; inset: 50% auto auto 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+               background: var(--ink); border: 2px solid var(--surface); display: none; }
+  .cell.on .dot { display: block; }
+  .legend { display: flex; align-items: center; gap: .5rem; font-size: .74rem; color: var(--faint); margin-top: .5rem; }
+  .legend .ramp { flex: 0 0 8rem; height: .55rem; background: linear-gradient(90deg, var(--cell-lo), var(--cell-hi)); border: 1px solid var(--line); }
+  .panel { display: flex; flex-direction: column; gap: 1.1rem; }
+  .card { background: var(--surface); border: 1px solid var(--line); padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .8rem; }
+  .card h2 { font-size: .74rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 0; }
+  .transport { display: flex; align-items: center; gap: .8rem; }
+  .play { font: inherit; font-weight: 600; font-size: .92rem; padding: .55rem 1.1rem; border: 0; border-radius: 2px;
+          background: var(--accent); color: var(--accent-ink); cursor: pointer; min-width: 6.5rem; }
+  .play:disabled { opacity: .5; cursor: progress; }
+  .time { font-family: var(--mono); font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; height: 4px; background: var(--sunken); position: relative; }
+  .bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); width: 0; }
+  .row { display: grid; grid-template-columns: 5.5rem 1fr 2.6rem; gap: .7rem; align-items: center; font-size: .86rem; }
+  .row output { font-family: var(--mono); font-size: .78rem; color: var(--faint); text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 2px; overflow: hidden; }
+  .seg button { flex: 1; font: inherit; font-size: .82rem; padding: .35rem .4rem; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line-strong); }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem 1rem; }
+  .stat b { display: block; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .78rem; color: var(--faint); }
+  .status { font-size: .8rem; color: var(--faint); min-height: 1.2em; }
+  .notes { font-family: var(--serif); font-size: .92rem; color: var(--muted); display: flex; flex-direction: column; gap: .5rem; max-width: 46rem; }
+  .notes p { margin: 0; }
+  .notes strong { color: var(--ink); font-family: var(--sans); font-weight: 600; }
+  code { font-family: var(--mono); font-size: .85em; background: var(--sunken); padding: .05em .3em; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">LiveBassNet · listening demo</div>
+    <h1>BassNet Z-Pad</h1>
+    <p class="intro">
+      A neural network listens to a band without its bass player and plays a bass line along with it. The square below is its
+      control pad: each position asks the model for a different bass line over the same music. Press play, then click or drag
+      across the pad; the bass changes while the band keeps playing.
+    </p>
+  </header>
+
+  <div class="songs" id="songs" role="group" aria-label="Song"></div>
+
+  <div class="stage">
+    <div>
+      <div class="padbox">
+        <div class="ylab" id="ylab">z₂</div>
+        <div class="pad" id="pad" role="grid" aria-label="Latent control pad"></div>
+        <div class="xlab" id="xlab">z₁</div>
+      </div>
+      <div class="legend"><span>fewer notes</span><span class="ramp"></span><span>more notes</span><span>· numbers: notes per minute</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <h2>Playback</h2>
+        <div class="transport">
+          <button class="play" id="play" disabled>Loading…</button>
+          <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+          <span class="time" id="time">0:00 / 0:30</span>
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </div>
+      <div class="card">
+        <h2>Mix</h2>
+        <div class="row"><label for="bandvol">Band</label><input id="bandvol" type="range" min="0" max="100" value="70"><output id="bandout">70</output></div>
+        <div class="row"><label for="bassvol">Bass</label><input id="bassvol" type="range" min="0" max="100" value="85"><output id="bassout">85</output></div>
+        <div class="row"><span>Bass line</span>
+          <div class="seg" id="source" role="group" aria-label="Bass line">
+            <button aria-pressed="true" data-src="gen">Generated</button><button aria-pressed="false" data-src="real">Real</button><button aria-pressed="false" data-src="none">None</button>
+          </div><span></span></div>
+      </div>
+      <div class="card">
+        <h2>Selected position</h2>
+        <div class="stats">
+          <div class="stat"><b id="npm">–</b><span>notes per minute, generated</span></div>
+          <div class="stat"><b id="realnpm">–</b><span>notes per minute, real bass</span></div>
+          <div class="stat"><b id="zval">–</b><span>latent z = (z₁, z₂)</span></div>
+          <div class="stat"><b id="cellpos">–</b><span>pad position</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <p><strong>What you are hearing.</strong> The band is a 30-second excerpt of a song from the Slakh2100 test set, rendered from MIDI
+      with sampled instruments; the model never saw it during training. The generated bass is produced causally, from audio that has
+      already been heard, exactly as the live web app produces it, and is played with a simple additive synthesiser, so its timbre
+      differs from the sampled bass of the "Real" line.</p>
+    <p><strong>The pad.</strong> The model's two latent dimensions were learned without labels. For this model the horizontal axis
+      mostly controls how busy the bass is; the lower-left corner moves it to a higher register. Each square is pre-rendered, so the pad
+      jumps between 25 positions; the live app accepts any position and your own audio.</p>
+    <p id="modelnote"></p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  let manifest, ctx, song, cell = [2, 2], playing = false, t0 = 0, offset0 = 0;
+  const buffers = {};             // url -> AudioBuffer
+  let nodes = {};                 // band, real, gen sources with their gains
+  let source = "gen";
+
+  function ensureCtx() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      nodes.bandGain = ctx.createGain(); nodes.bassGain = ctx.createGain();
+      nodes.bandGain.connect(ctx.destination); nodes.bassGain.connect(ctx.destination);
+      applyVolumes();
+    }
+    return ctx;
+  }
+  async function load(url) {
+    if (buffers[url]) return buffers[url];
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url}: ${res.status}`);
+    const buf = await ensureCtx().decodeAudioData(await res.arrayBuffer());
+    buffers[url] = buf;
+    return buf;
+  }
+  const cellUrl = (name, ix, iy) => `audio/${name}_z${ix}${iy}.mp3`;
+  const position = () => playing ? (offset0 + ctx.currentTime - t0) % manifest.dur : offset0;
+
+  function startSource(buf, dest, at) {
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const g = ctx.createGain(); g.gain.value = 0;
+    src.connect(g).connect(dest);
+    src.start(0, at % buf.duration);
+    g.gain.setTargetAtTime(1, ctx.currentTime, 0.015);
+    return { src, g };
+  }
+  function stopSource(n) {
+    if (!n) return;
+    n.g.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+    n.src.stop(ctx.currentTime + 0.12);
+  }
+  async function bassBuffer() {
+    if (source === "none") return null;
+    if (source === "real") return load(`audio/${song.name}_realbass.mp3`);
+    return load(cellUrl(song.name, cell[0], cell[1]));
+  }
+  async function switchBass() {
+    if (!playing) return;
+    const buf = await bassBuffer();
+    const at = position();
+    stopSource(nodes.bass); nodes.bass = null;
+    if (buf) nodes.bass = startSource(buf, nodes.bassGain, at);
+  }
+  async function play() {
+    ensureCtx(); await ctx.resume();
+    const band = await load(`audio/${song.name}_band.mp3`);
+    const bass = await bassBuffer();
+    t0 = ctx.currentTime; playing = true;
+    nodes.band = startSource(band, nodes.bandGain, offset0);
+    if (bass) nodes.bass = startSource(bass, nodes.bassGain, offset0);
+    $("play").textContent = "Pause"; tick();
+  }
+  function pause() {
+    offset0 = position(); playing = false;
+    stopSource(nodes.band); stopSource(nodes.bass); nodes.band = nodes.bass = null;
+    $("play").textContent = "Play";
+  }
+  function tick() {
+    if (!playing) return;
+    const p = position();
+    $("progress").style.width = `${(100 * p / manifest.dur).toFixed(2)}%`;
+    $("time").textContent = `${fmt(p)} / ${fmt(manifest.dur)}`;
+    requestAnimationFrame(tick);
+  }
+  function applyVolumes() {
+    if (!ctx) return;
+    nodes.bandGain.gain.value = $("bandvol").value / 100;
+    nodes.bassGain.gain.value = $("bassvol").value / 100;
+  }
+
+  function renderPad() {
+    const pad = $("pad"); pad.innerHTML = "";
+    const vals = song.cells.map(c => c.notes_per_min);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const n = manifest.grid.length;
+    for (let row = n - 1; row >= 0; row--) {
+      for (let ix = 0; ix < n; ix++) {
+        const c = song.cells.find(c => c.ix === ix && c.iy === row);
+        const b = document.createElement("button");
+        b.className = "cell"; b.type = "button"; b.dataset.ix = ix; b.dataset.iy = row;
+        b.setAttribute("aria-label", `z1 step ${ix + 1}, z2 step ${row + 1}: ${c.notes_per_min} notes per minute`);
+        const t = hi > lo ? (c.notes_per_min - lo) / (hi - lo) : 0;
+        b.style.background = `color-mix(in oklab, var(--cell-hi) ${Math.round(12 + 78 * t)}%, var(--cell-lo))`;
+        b.innerHTML = `<i class="dot"></i><span>${Math.round(c.notes_per_min)}</span>`;
+        b.tabIndex = (ix === cell[0] && row === cell[1]) ? 0 : -1;
+        pad.appendChild(b);
+      }
+    }
+    markCell();
+  }
+  function markCell() {
+    for (const b of $("pad").children) {
+      const on = +b.dataset.ix === cell[0] && +b.dataset.iy === cell[1];
+      b.classList.toggle("on", on); b.tabIndex = on ? 0 : -1;
+    }
+    const c = song.cells.find(c => c.ix === cell[0] && c.iy === cell[1]);
+    $("npm").textContent = c.notes_per_min.toFixed(0);
+    $("realnpm").textContent = song.real_notes_per_min.toFixed(0);
+    $("zval").textContent = `(${c.z[0].toFixed(1)}, ${c.z[1].toFixed(1)})`;
+    $("cellpos").textContent = `${cell[0] + 1}, ${cell[1] + 1}`;
+  }
+  function setCell(ix, iy, focus) {
+    const n = manifest.grid.length;
+    ix = Math.max(0, Math.min(n - 1, ix)); iy = Math.max(0, Math.min(n - 1, iy));
+    if (ix === cell[0] && iy === cell[1]) return;
+    cell = [ix, iy]; markCell();
+    if (focus) [...$("pad").children].find(b => b.classList.contains("on"))?.focus();
+    if (source === "gen") switchBass();
+  }
+  function cellFromPointer(e) {
+    const r = $("pad").getBoundingClientRect(), n = manifest.grid.length;
+    const ix = Math.floor(((e.clientX - r.left) / r.width) * n);
+    const iy = n - 1 - Math.floor(((e.clientY - r.top) / r.height) * n);
+    return [ix, iy];
+  }
+
+  async function selectSong(i) {
+    if (playing) pause();
+    offset0 = 0;
+    song = manifest.songs[i];
+    for (const b of $("songs").children) b.setAttribute("aria-pressed", String(+b.dataset.i === i));
+    renderPad();
+    $("play").disabled = true; $("play").textContent = "Loading…";
+    $("status").textContent = "Loading audio…";
+    try {
+      await load(`audio/${song.name}_band.mp3`);
+      await load(cellUrl(song.name, cell[0], cell[1]));
+      $("play").disabled = false; $("play").textContent = "Play";
+      $("status").textContent = "Ready. Other positions load in the background.";
+      // warm the rest of the pad so switching is instant
+      const n = manifest.grid.length; let done = 0;
+      const all = [];
+      for (let ix = 0; ix < n; ix++) for (let iy = 0; iy < n; iy++) all.push(cellUrl(song.name, ix, iy));
+      all.push(`audio/${song.name}_realbass.mp3`);
+      for (const u of all) { await load(u).catch(() => {}); done++; }
+      if (song === manifest.songs[i]) $("status").textContent = `All ${n * n} positions loaded.`;
+    } catch (err) {
+      $("status").textContent = `Could not load audio (${err.message}).`;
+    }
+  }
+
+  async function init() {
+    try {
+      manifest = await (await fetch("manifest.json")).json();
+    } catch (err) {
+      $("status").textContent = "Could not load the demo data."; return;
+    }
+    manifest.songs.forEach((s, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.i = i; b.setAttribute("aria-pressed", "false");
+      b.innerHTML = `Song ${i + 1}<small>${s.name}</small>`;
+      b.addEventListener("click", () => selectSong(i));
+      $("songs").appendChild(b);
+    });
+    if (manifest.axis_x) $("xlab").textContent = manifest.axis_x;
+    if (manifest.axis_y) $("ylab").textContent = manifest.axis_y;
+    $("modelnote").textContent = manifest.note || "";
+    selectSong(0);
+  }
+
+  $("play").addEventListener("click", () => playing ? pause() : play());
+  for (const id of ["bandvol", "bassvol"]) {
+    $(id).addEventListener("input", () => { $(id.replace("vol", "out")).textContent = $(id).value; applyVolumes(); });
+  }
+  $("source").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    source = b.dataset.src;
+    for (const x of $("source").children) x.setAttribute("aria-pressed", String(x === b));
+    switchBass();
+  });
+  let dragging = false;
+  $("pad").addEventListener("pointerdown", e => { dragging = true; $("pad").setPointerCapture(e.pointerId); setCell(...cellFromPointer(e)); });
+  $("pad").addEventListener("pointermove", e => { if (dragging) setCell(...cellFromPointer(e)); });
+  $("pad").addEventListener("pointerup", () => { dragging = false; });
+  $("pad").addEventListener("keydown", e => {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    if (d) { e.preventDefault(); setCell(cell[0] + d[0], cell[1] + d[1], true); }
+    if (e.key === " ") { e.preventDefault(); $("play").click(); }
+  });
+  init();
+})();
+</script>
+
+</html>

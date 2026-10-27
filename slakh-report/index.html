@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BassNet on Slakh2100</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root {
+    --ground: #f3f6f6; --surface: #ffffff; --sunken: #eaefef;
+    --ink: #0e1a1c; --muted: #566b6e; --faint: #7d9093;
+    --line: #d9e2e1; --line-strong: #b9c8c7;
+    --accent: #0d6b70; --accent-soft: #d7e8e8;
+    --warn: #a2661b; --warn-soft: #f0e3cf;
+    --crit: #9c3b2e; --ok: #2c7a57;
+    --fig-bg: #ffffff;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "IBM Plex Serif", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0c1315; --surface: #131e20; --sunken: #0f191b;
+      --ink: #e4ecea; --muted: #9db0b1; --faint: #7b9092;
+      --line: #24363a; --line-strong: #38504f;
+      --accent: #58bfc2; --accent-soft: #16383a;
+      --warn: #d9a45c; --warn-soft: #3a2e18;
+      --crit: #dd8375; --ok: #63bd90;
+      --fig-bg: #e9efee;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0c1315; --surface: #131e20; --sunken: #0f191b;
+    --ink: #e4ecea; --muted: #9db0b1; --faint: #7b9092;
+    --line: #24363a; --line-strong: #38504f;
+    --accent: #58bfc2; --accent-soft: #16383a;
+    --warn: #d9a45c; --warn-soft: #3a2e18;
+    --crit: #dd8375; --ok: #63bd90;
+    --fig-bg: #e9efee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: var(--serif); font-size: 17px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    padding-inline: 16px;
+  }
+  .wrap { max-width: 54rem; margin: 0 auto; padding-block: 3rem 6rem;
+          display: flex; flex-direction: column; gap: 3.5rem; }
+  header { display: flex; flex-direction: column; gap: 1rem; }
+  .eyebrow { font-family: var(--sans); font-size: .74rem; font-weight: 600;
+             letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-family: var(--sans); font-weight: 600; font-size: clamp(2rem, 5vw, 2.7rem);
+       line-height: 1.12; letter-spacing: -.015em; margin: 0; text-wrap: balance; }
+  .standfirst { font-size: 1.08rem; color: var(--muted); margin: 0; max-width: 44rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; padding-top: 1rem;
+          border-top: 1px solid var(--line); font-family: var(--mono);
+          font-size: .78rem; color: var(--faint); }
+  .meta b { color: var(--muted); font-weight: 500; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; font-family: var(--sans); font-size: .86rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+  nav.toc a:hover, nav.toc a:focus-visible { border-bottom-color: var(--accent); }
+  section { display: flex; flex-direction: column; gap: 1.25rem; scroll-margin-top: 1rem; }
+  .part { font-family: var(--sans); font-size: .72rem; font-weight: 600; letter-spacing: .14em;
+          text-transform: uppercase; color: var(--faint); margin-bottom: -.8rem; }
+  h2 { font-family: var(--sans); font-weight: 600; font-size: 1.4rem;
+       letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 1.02rem; margin: 0; }
+  p { margin: 0; max-width: 46rem; }
+  .lede { color: var(--muted); font-size: .98rem; }
+  code { font-family: var(--mono); font-size: .84em; background: var(--sunken);
+         padding: .08em .32em; color: var(--ink); }
+  .key { background: var(--surface); border: 1px solid var(--line);
+         border-left: 3px solid var(--accent); padding: 1.3rem 1.5rem;
+         display: flex; flex-direction: column; gap: .7rem; }
+  .key ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .5rem; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1px;
+           background: var(--line); border: 1px solid var(--line); }
+  .stat { background: var(--surface); padding: .9rem 1rem; display: flex; flex-direction: column; gap: .15rem; }
+  .stat b { font-family: var(--sans); font-weight: 600; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .84rem; color: var(--muted); line-height: 1.4; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { padding: .55rem .8rem; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-family: var(--sans); font-weight: 600; font-size: .72rem; letter-spacing: .06em;
+       text-transform: uppercase; color: var(--faint); background: var(--sunken); }
+  td { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+  td:first-child { font-family: var(--sans); color: var(--ink); white-space: normal; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.hl td { color: var(--ink); background: var(--accent-soft); }
+  tr.ref td { color: var(--faint); }
+  .num { text-align: right; }
+  .findings { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+  .finding { display: grid; grid-template-columns: 7.5rem 1fr; gap: .2rem 1.2rem;
+             padding: 1rem 0; border-bottom: 1px solid var(--line); }
+  .finding .tag { font-family: var(--sans); font-size: .72rem; font-weight: 600; letter-spacing: .06em;
+                  text-transform: uppercase; color: var(--accent); padding-top: .2rem; }
+  .finding p { font-size: .95rem; color: var(--muted); }
+  .finding p strong { color: var(--ink); }
+  @media (max-width: 560px) { .finding { grid-template-columns: 1fr; } }
+  .pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: .5rem; }
+  .step { flex: 1 1 10rem; background: var(--surface); border: 1px solid var(--line); padding: .75rem .85rem;
+          display: flex; flex-direction: column; gap: .2rem; }
+  .step b { font-family: var(--sans); font-size: .86rem; }
+  .step span { font-size: .82rem; color: var(--muted); line-height: 1.45; }
+  .step small { font-family: var(--mono); font-size: .72rem; color: var(--faint); }
+  .grids { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1.2rem; }
+  .gridbox { display: flex; flex-direction: column; gap: .5rem; }
+  .gridbox h3 { font-size: .9rem; }
+  .grid3 { display: grid; grid-template-columns: auto repeat(3, 1fr); gap: 1px;
+           background: var(--line); border: 1px solid var(--line); font-size: .84rem; }
+  .grid3 > div { background: var(--surface); padding: .5rem .6rem; }
+  .grid3 .hd { background: var(--sunken); font-family: var(--sans); font-weight: 600;
+               font-size: .7rem; letter-spacing: .04em; color: var(--faint); }
+  .grid3 .cell { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .grid3 .cell b { display: block; font-size: 1rem; font-weight: 500; color: var(--ink); }
+  .grid3 .cell span { color: var(--faint); font-size: .72rem; }
+  .grid3 .cell.reg b { color: var(--warn); }
+  .bar { height: 4px; background: var(--accent); margin-top: .3rem; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: .5rem; }
+  figure img { width: 100%; background: var(--fig-bg); border: 1px solid var(--line); display: block; }
+  figcaption { font-size: .86rem; color: var(--faint); max-width: 48rem; }
+  .note { background: var(--sunken); border-left: 2px solid var(--warn); padding: .75rem .9rem; font-size: .93rem; }
+  .note b { font-family: var(--sans); font-size: .74rem; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: var(--warn); display: block; margin-bottom: .2rem; }
+  .songs { display: flex; flex-direction: column; gap: 1.5rem; }
+  .song { background: var(--surface); border: 1px solid var(--line); padding: 1.1rem 1.2rem;
+          display: flex; flex-direction: column; gap: .8rem; }
+  .song-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem; }
+  .song-head span { font-family: var(--mono); font-size: .78rem; color: var(--faint); }
+  .clips { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem 1.2rem; }
+  .clip { display: flex; flex-direction: column; gap: .3rem; }
+  .clip label { font-family: var(--sans); font-size: .84rem; font-weight: 500; }
+  .clip label small { font-weight: 400; color: var(--faint); font-family: var(--mono); font-size: .74rem; margin-left: .35rem; }
+  .clip audio { width: 100%; height: 36px; }
+  .group-label { font-family: var(--sans); font-size: .7rem; font-weight: 600; letter-spacing: .1em;
+                 text-transform: uppercase; color: var(--accent); grid-column: 1 / -1; margin-top: .3rem; }
+  ol.next { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .5rem; max-width: 46rem; }
+  footer { border-top: 1px solid var(--line); padding-top: 1.25rem; font-size: .86rem; color: var(--faint);
+           display: flex; flex-direction: column; gap: .4rem; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">LiveBassNet · progress report · 1 October 2026</div>
+    <h1>BassNet on Slakh2100</h1>
+    <p class="standfirst">
+      First training of the strictly causal BassNet on real-scale multitrack data. The model learns from the mix,
+      two random seeds agree to within 0.01 nats, and its two-dimensional latent space contains a reliable control
+      for how busy the bass line is.
+    </p>
+    <div class="meta">
+      <span><b>Data</b> Slakh2100 (redux), single-bass tracks</span>
+      <span><b>Model</b> BassNet VGAE · 40/40 window · 36 bins/oct · causal, right-aligned CQT · δ = 0</span>
+      <span><b>Runs</b> 2 seeds, ≈13 h each on H200 / H100</span>
+    </div>
+    <nav class="toc" aria-label="Contents">
+      <a href="#data">Data</a><a href="#checks">Data checks</a><a href="#pipeline">Pipeline</a>
+      <a href="#training">Training</a><a href="#descriptors">Descriptor losses</a><a href="#notes">Note level</a>
+      <a href="#latent">Latent control</a><a href="#listen">Listening</a><a href="#next">Next steps</a>
+    </nav>
+  </header>
+
+  <div class="key">
+    <p><strong>Summary</strong></p>
+    <ul>
+      <li><strong>Data.</strong> 72.9 h of training audio from 1068 Slakh tracks with exactly one bass part, plus the official validation (15.4 h) and test (9.3 h) splits. The paper's proprietary pop/rock set had 60 h.</li>
+      <li><strong>Learning.</strong> Test pitch cross-entropy is <strong>2.04</strong>, against 3.20 for a predictor that ignores the mix; level and onset improve as well. 60% of voiced frames are within 50 cents of the target (94% on artificial data with the same configuration).</li>
+      <li><strong>Note level.</strong> Reconstructing the bass of unseen songs gives onset F1 0.59–0.61, and 61% of matched notes have the right pitch. The rendering pipeline itself tops out at 0.86 / 93%.</li>
+      <li><strong>Control.</strong> The latent space is used (KL ≈ 3 nats). In both seeds one direction scales note density about eight-fold, and one corner moves the bass to a higher register. Generated bass favours octaves, fifths and thirds below the mix more than real bass does, as in Figure 8 of the paper.</li>
+    </ul>
+  </div>
+
+  <!-- ===================================================== DATA -->
+  <section id="data">
+    <div class="part">Part 1 · Data</div>
+    <h2>Slakh2100</h2>
+    <p class="lede">
+      Slakh2100 renders 2100 songs from the Lakh MIDI dataset with professional sample-based virtual instruments,
+      and ships every instrument as a separate audio stem together with its MIDI. We use the <em>redux</em> release,
+      which moves songs whose MIDI duplicates another song into an <code>omitted</code> split, so that no song is in
+      both training and test.
+    </p>
+    <div class="stats">
+      <div class="stat"><b>145 h</b><span>total audio, 44.1 kHz mono FLAC, 105 GB</span></div>
+      <div class="stat"><b>244.5 s</b><span>median track length (the paper's pop/rock set: 245 s mean)</span></div>
+      <div class="stat"><b>93%</b><span>of tracks have a stem of class Bass: six sampled bass instruments, no synth bass</span></div>
+      <div class="stat"><b>72%</b><span>of the time the bass is actually sounding</span></div>
+    </div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Split</th><th class="num">Tracks</th><th class="num">With bass</th><th class="num">Two or more bass stems</th><th class="num">Hours</th><th class="num">Used: single-bass tracks</th><th class="num">Used hours</th></tr></thead>
+      <tbody>
+        <tr><td>train</td><td class="num">1289</td><td class="num">1204</td><td class="num">136</td><td class="num">88.9</td><td class="num">1068</td><td class="num">72.9</td></tr>
+        <tr><td>validation</td><td class="num">270</td><td class="num">249</td><td class="num">22</td><td class="num">18.3</td><td class="num">227</td><td class="num">15.4</td></tr>
+        <tr><td>test</td><td class="num">151</td><td class="num">143</td><td class="num">13</td><td class="num">11.0</td><td class="num">130</td><td class="num">9.3</td></tr>
+        <tr class="ref"><td>omitted (not used)</td><td class="num">390</td><td class="num">360</td><td class="num">24</td><td class="num">26.7</td><td class="num">—</td><td class="num">—</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">
+      Bass instruments (per stem, training split): electric bass, finger 654 · fretless 516 · electric bass, pick 89 ·
+      slap 77 · acoustic 35. Validation is used for early stopping only; all reported numbers are on the test split,
+      which the paper did not have.
+    </p>
+  </section>
+
+  <section id="checks">
+    <h2>What the data checks found</h2>
+    <div class="findings">
+      <div class="finding"><span class="tag">Mix = Σ stems</span>
+        <p>On every track checked, the best gain between <code>mix.flac</code> and the sum of the stems is 1.000 and the residual is 0.07–0.15% of the mix energy (16-bit quantisation level). The input mix can therefore be rebuilt <strong>exactly</strong> from the stems, without the bass.</p></div>
+      <div class="finding"><span class="tag">MIDI octave</span>
+        <p>Slakh's bass MIDI is written in bass-guitar notation, <strong>one octave above the sounding pitch</strong>: comparing CREPE on the audio with the MIDI gives an offset of exactly −1200 cents on 96–100% of frames. Taking this into account, the lowest sounding note is B1 (61.7 Hz), so our CREPE floor of 41.2 Hz (E1) covers the whole range. Lowering it to 30.9 Hz makes torchcrepe's decoding fail.</p></div>
+      <div class="finding"><span class="tag">Pitch labels</span>
+        <p>The training targets come from CREPE, as in the paper. Against the MIDI on 60 validation tracks, <strong>96.1% of voiced frames are within 50 cents</strong>, with 1.0% octave errors and a median error of 8 cents; voicing recall / precision are 0.89 / 0.91.</p></div>
+      <div class="finding"><span class="tag">Two bass parts</span>
+        <p>The one bad case (2.4% within 50 cents) has two bass stems playing in different registers, which a single f0 cannot describe. Tracks with more than one bass stem (11% of training) are therefore left out of this first baseline.</p></div>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <h2>Pipeline</h2>
+    <div class="pipeline">
+      <div class="step"><b>Stems → pair</b><span>x = sum of all non-bass stems (drums included), y = sum of the bass stems</span><small>16 kHz mono, peak-normalised</small></div>
+      <div class="step"><b>CQT</b><span>log-magnitude, 36 bins per octave, 264 bins from A0, 10 ms hop</span><small>causal, kernels right-aligned</small></div>
+      <div class="step"><b>Bass descriptors</b><span>pitch (CREPE), level (STFT RMS), onset (madmom CNN)</span><small>pitch loss masked when unvoiced</small></div>
+      <div class="step"><b>BassNet VGAE</b><span>5 dilated residual blocks × 128 channels, 2-D latent z, cross-reconstruction loss</span><small>2.26 M parameters</small></div>
+    </div>
+    <p class="lede">
+      Every component reads only past audio, so the model can run in a live setting; the right-aligned CQT kernels
+      remove the blind zone that a centred causal CQT leaves before "now" (on artificial data this cut the cost of
+      causality from 0.065 to 0.0025 nats). Training follows the paper: Adam, learning rate 10⁻⁴, batch 20,
+      mini-epochs of 1000 instances, early stopping with patience 3000 mini-epochs.
+    </p>
+  </section>
+
+  <!-- ===================================================== RESULTS -->
+  <section id="training">
+    <div class="part">Part 2 · Results</div>
+    <h2>Training</h2>
+    <p class="lede">
+      Two runs, identical except for the random seed. With the features held in RAM a mini-epoch takes about 9 s.
+      Run 2 was pre-empted once by the scheduler and resumed from its saved state without losing progress.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Run</th><th class="num">Best validation loss at</th><th class="num">Best descriptor loss at</th><th class="num">Stopped at</th><th class="num">Wall time</th></tr></thead>
+      <tbody>
+        <tr><td>Run 1 · seed 0 · H200</td><td class="num">2168</td><td class="num">2539</td><td class="num">5168</td><td class="num">13.3 h</td></tr>
+        <tr><td>Run 2 · seed 1 · H100</td><td class="num">2040</td><td class="num">2130</td><td class="num">5040</td><td class="num">13.0 h</td></tr>
+      </tbody>
+    </table></div>
+    <figure>
+      <img src="curves.png" alt="Learning curves of run 1: total loss on a log scale, the three validation descriptor losses, and the KL terms. All flatten after about 1000 mini-epochs.">
+      <figcaption>Run 1. The curves flatten after about 1000 mini-epochs, and training and validation loss stay close, so there is no sign of overfitting. The last 4000 mini-epochs lowered test pitch cross-entropy only from 2.07 to 2.04.</figcaption>
+    </figure>
+  </section>
+
+  <section id="descriptors">
+    <h2>Descriptor losses on the test split</h2>
+    <p class="lede">
+      4000 windows from the 130 test tracks, losses averaged per element; pitch counts voiced frames only.
+      The reference row predicts from the training-set statistics alone: the histogram of training bass pitches,
+      and constant level and onset probabilities.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th></th><th class="num">Pitch CCE</th><th class="num">Level BCE</th><th class="num">Onset BCE</th><th class="num">Within 50 cents</th><th class="num">Median error</th></tr></thead>
+      <tbody>
+        <tr class="ref"><td>Training statistics only (ignores the mix)</td><td class="num">3.199</td><td class="num">0.681</td><td class="num">0.190</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr class="hl"><td>Run 1 · seed 0</td><td class="num">2.041</td><td class="num">0.578</td><td class="num">0.132</td><td class="num">60.1%</td><td class="num">16 c</td></tr>
+        <tr class="hl"><td>Run 2 · seed 1</td><td class="num">2.037</td><td class="num">0.575</td><td class="num">0.133</td><td class="num">60.2%</td><td class="num">15 c</td></tr>
+        <tr class="ref"><td>For comparison: artificial dataset A1, same configuration</td><td class="num">0.76</td><td class="num">—</td><td class="num">—</td><td class="num">94%</td><td class="num">—</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">
+      When the model is right it is precise (median error 15–16 cents); most misses are other notes of the key rather
+      than tuning errors. For context, 70% of voiced test frames have the same pitch as 100 ms earlier, so simply
+      continuing the current note is a strong strategy that a causal model which never hears the bass cannot use directly.
+    </p>
+  </section>
+
+  <section id="notes">
+    <h2>Note-level evaluation</h2>
+    <p class="lede">
+      To listen to the output, predicted descriptors are turned into notes: a note starts at each peak of the onset
+      curve above a threshold. The default threshold of 0.5 recalled only 14% of onsets, so it was tuned on 30 validation
+      songs against the MIDI note starts (±50 ms): F1 peaks at 0.15 for run 1 and 0.20 for run 2.
+    </p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Threshold (validation, run 1)</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th></tr></thead>
+      <tbody>
+        <tr><td>0.05</td><td class="num">0.365</td><td class="num">0.777</td><td class="num">0.497</td></tr>
+        <tr><td>0.10</td><td class="num">0.490</td><td class="num">0.697</td><td class="num">0.575</td></tr>
+        <tr class="hl"><td>0.15 (chosen)</td><td class="num">0.550</td><td class="num">0.641</td><td class="num">0.592</td></tr>
+        <tr><td>0.20</td><td class="num">0.591</td><td class="num">0.582</td><td class="num">0.586</td></tr>
+        <tr><td>0.30</td><td class="num">0.654</td><td class="num">0.442</td><td class="num">0.528</td></tr>
+        <tr class="ref"><td>0.50 (old default)</td><td class="num">0.734</td><td class="num">0.136</td><td class="num">0.229</td></tr>
+      </tbody>
+    </table></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Test split · 130 songs · 58 513 reference notes</th><th class="num">Onset F1</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">Correct pitch of matched notes</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>Run 1, z from the encoder</td><td class="num">0.593</td><td class="num">0.534</td><td class="num">0.667</td><td class="num">60.8%</td></tr>
+        <tr class="hl"><td>Run 2, z from the encoder</td><td class="num">0.609</td><td class="num">0.558</td><td class="num">0.669</td><td class="num">61.3%</td></tr>
+        <tr class="ref"><td>Ceiling: true descriptors through the same note extraction</td><td class="num">0.857</td><td class="num">0.844</td><td class="num">0.870</td><td class="num">93.0%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="lede">"z from the encoder" asks the model to reproduce the real bass line of an unseen song. Pitches are compared at sounding pitch (MIDI − 12).</p>
+  </section>
+
+  <section id="latent">
+    <h2>Latent control</h2>
+    <p class="lede">
+      For each point of a 3 × 3 grid of fixed z, a bass line was generated for all 130 test songs. The real bass plays
+      104.8 notes per minute with median pitch MIDI 41 (F2). Bars show notes per minute relative to the busiest cell;
+      orange marks the cell where the register moves.
+    </p>
+    <div class="grids" id="grids"></div>
+    <p class="lede">
+      Both seeds learn a <strong>density direction</strong> spanning roughly 25 to 200+ notes per minute, but along
+      different axes: z₁ in run 1, z₂ in run 2. The VAE prior is isotropic, so the latent axes are only defined up to
+      rotation and reflection; the stable result is that a density direction exists, not which coordinate carries it.
+      In both runs the corner z = (−1.5, −1.5) raises the median pitch (to MIDI 45 and 48) and widens the range from 5 to 9 semitones.
+    </p>
+    <figure>
+      <img src="relative_f0.png" alt="Nine bar charts, one per latent grid point: distribution of the generated bass pitch relative to the mix pitch, minus that of the real bass. Most panels are positive at −12, −19 and −24 semitones.">
+      <figcaption>
+        Replication of the paper's Section 6.4 / Figure 8 (run 1): interval between the generated bass and the predominant
+        pitch of the mix (CREPE on the mix), minus the same distribution for the real bass. Teal bars occur more often than
+        in real bass. For most z the model over-uses −12 (octave below), −19 (octave plus fifth), −24 and −16/−28 (thirds)
+        and under-uses passing intervals: it plays chord tones more conservatively than the real bass. The paper also found
+        octaves and fourths modulated by z. The top-left panel, z = (−1.5, −1.5), moves the bass close to the mix pitch (0, −5, −7).
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="listen">
+    <h2>Listening examples</h2>
+    <p class="lede">
+      Three test songs, 30 s each (60–90 s into the song), run 1. Every clip is the full mix plus a bass line.
+      Generated bass is rendered with a General MIDI bass from FluidSynth, while the original uses Slakh's sampled
+      instruments, so differences in timbre are not model errors. Suggested order: original → ceiling → reconstruction → latent points.
+    </p>
+    <div class="songs" id="songs"></div>
+  </section>
+
+  <section id="next">
+    <h2>Limitations and next steps</h2>
+    <ol class="next">
+      <li><strong>Pitch accuracy.</strong> 60% within 50 cents is far below the 94% on artificial data, and the model stopped improving after about 1000 mini-epochs, which points to limited context or capacity rather than too little training. The most direct experiment is a longer, multi-resolution window (the paper compared windows up to 10/640).</li>
+      <li><strong>Augmentation.</strong> The paper remixed the stems with random gains for real data; the stem groups for this are already prepared.</li>
+      <li><strong>Cost of causality on real data.</strong> A non-causal twin on the same data is needed to measure it (0.0025 nats on artificial data).</li>
+      <li><strong>Anticipation δ.</strong> Sweeping δ = 10 and 40 frames (100 and 400 ms) gives the latency budget for live use.</li>
+      <li><strong>Multi-bass tracks and real recordings.</strong> Slakh is rendered from quantised MIDI; a real multitrack set with bass stems (MUSDB18-HQ, MoisesDB) is the eventual target.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>All numbers are measured in this project. Each training run takes about 13 h on one H100/H200.</p>
+    <p>Sources: runs/slakh_40_40_causal_ra{,_seed1}/evaluation_best_descriptors.json and analysis/analysis.json; scripts bassnet/slakh/{prepare,inspect_slakh,check_crepe,baselines,analyze}.py.</p>
+  </footer>
+
+</div>
+
+<script>
+  // latent grids: notes per minute and median MIDI pitch, test split
+  const runs = [
+    { name: "Run 1 · seed 0", cells: {
+      "-1.5,1.5": [26.7, 41], "0,1.5": [112.8, 41], "1.5,1.5": [170.7, 41],
+      "-1.5,0": [40.9, 41], "0,0": [143.3, 40.5], "1.5,0": [228.0, 40],
+      "-1.5,-1.5": [98.9, 45], "0,-1.5": [138.1, 40], "1.5,-1.5": [185.4, 41] } },
+    { name: "Run 2 · seed 1", cells: {
+      "-1.5,1.5": [170.2, 41], "0,1.5": [200.2, 40], "1.5,1.5": [167.9, 41],
+      "-1.5,0": [120.4, 41], "0,0": [136.0, 40], "1.5,0": [114.8, 41],
+      "-1.5,-1.5": [81.9, 48], "0,-1.5": [24.1, 40.2], "1.5,-1.5": [62.8, 40] } },
+  ];
+  const vals = ["-1.5", "0", "1.5"];
+  const gridRoot = document.getElementById("grids");
+  for (const run of runs) {
+    const max = Math.max(...Object.values(run.cells).map(c => c[0]));
+    const box = document.createElement("div");
+    box.className = "gridbox";
+    let html = `<h3>${run.name}</h3><div class="grid3" role="table" aria-label="${run.name}: notes per minute by latent point">`;
+    html += `<div class="hd">z₂ \\ z₁</div>` + vals.map(v => `<div class="hd">${v.replace("-", "−")}</div>`).join("");
+    for (const y of ["1.5", "0", "-1.5"]) {
+      html += `<div class="hd">${y.replace("-", "−")}</div>`;
+      for (const x of vals) {
+        const [n, m] = run.cells[`${x},${y}`];
+        const reg = m >= 44 ? " reg" : "";
+        html += `<div class="cell${reg}"><b>${n.toFixed(1)}</b><span>notes/min · MIDI ${m}</span>` +
+                `<div class="bar" style="width:${(100 * n / max).toFixed(1)}%"></div></div>`;
+      }
+    }
+    box.innerHTML = html + "</div>";
+    gridRoot.appendChild(box);
+  }
+
+  // listening examples
+  const songs = [
+    { id: "Track01881", note: "busy groove · ~900 notes in the full song" },
+    { id: "Track01945", note: "medium density · ~360 notes" },
+    { id: "Track02029", note: "sparse · ~160 notes; at z = (−1.5, 0) only 10 in the whole song" },
+  ];
+  const clips = [
+    ["Reference", [["original", "Original", "real bass"], ["oracle", "Ceiling", "true descriptors → same synth"]]],
+    ["Model", [["zenc", "Reconstruction", "z from the encoder"], ["z0_0", "z = (0, 0)", "prior centre"]]],
+    ["Along z₁ (density in run 1)", [["zm1.5_0", "z = (−1.5, 0)", "sparse"], ["z1.5_0", "z = (1.5, 0)", "busy"]]],
+    ["Along z₂", [["z0_m1.5", "z = (0, −1.5)", ""], ["z0_1.5", "z = (0, 1.5)", ""]]],
+  ];
+  const songRoot = document.getElementById("songs");
+  for (const s of songs) {
+    const card = document.createElement("div");
+    card.className = "song";
+    card.innerHTML = `<div class="song-head"><h3>${s.id}</h3><span>${s.note}</span></div>`;
+    const grid = document.createElement("div");
+    grid.className = "clips";
+    for (const [group, items] of clips) {
+      const g = document.createElement("div");
+      g.className = "group-label";
+      g.textContent = group;
+      grid.appendChild(g);
+      for (const [tag, label, sub] of items) {
+        const id = `a-${s.id}-${tag}`;
+        const c = document.createElement("div");
+        c.className = "clip";
+        c.innerHTML = `<label for="${id}">${label}${sub ? `<small>${sub}</small>` : ""}</label>` +
+          `<audio id="${id}" controls preload="none" src="audio/${s.id}_${tag}.mp3"></audio>`;
+        grid.appendChild(c);
+      }
+    }
+    card.appendChild(grid);
+    songRoot.appendChild(card);
+  }
+  document.addEventListener("play", e => {
+    for (const a of document.querySelectorAll("audio")) if (a !== e.target) a.pause();
+  }, true);
+</script>
+
+</html>

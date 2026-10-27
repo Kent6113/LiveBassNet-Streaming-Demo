@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiveBassNet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
+<style>
+  :root { --ground:#f3f6f6; --surface:#fff; --ink:#0e1a1c; --muted:#566b6e; --line:#d9e2e1; --accent:#0d6b70; }
+  @media (prefers-color-scheme: dark) { :root { color-scheme: dark; --ground:#0c1315; --surface:#131e20; --ink:#e4ecea; --muted:#9db0b1; --line:#24363a; --accent:#58bfc2; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: "IBM Plex Sans", system-ui, sans-serif; line-height: 1.55; padding-inline: 16px; }
+  .wrap { max-width: 44rem; margin: 0 auto; padding-block: 3rem 4rem; display: flex; flex-direction: column; gap: 1.6rem; }
+  .eyebrow { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1 { margin: 0; font-size: clamp(1.9rem, 5vw, 2.5rem); line-height: 1.1; }
+  p { margin: 0; font-family: "IBM Plex Serif", Georgia, serif; color: var(--muted); }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .7rem; }
+  li a { display: block; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+         padding: .9rem 1.1rem; color: inherit; text-decoration: none; }
+  li a:hover, li a:focus-visible { border-color: var(--accent); }
+  li b { display: block; font-size: 1.05rem; }
+  li span { font-size: .9rem; color: var(--muted); }
+  footer { border-top: 1px solid var(--line); padding-top: 1rem; font-size: .82rem; color: var(--muted); display: flex; flex-direction: column; gap: .4rem; }
+  footer a { color: var(--accent); }
+</style>
+<div class="wrap">
+  <div class="eyebrow">LiveBassNet</div>
+  <h1>Towards a live bass-accompaniment model</h1>
+  <p>A causal, streaming version of BassNet: it listens to a band without a bass player and generates a bass line from the
+     audio it has heard so far, with a 2-D control for the style of the bass. Research in progress.</p>
+  <ul>
+    <li><a href="upload/"><b>LiveBassNet Studio</b><span>Load your own song without bass and generate a bass line in the browser, steering it live on the latent pad.</span></a></li>
+    <li><a href="drag/"><b>LiveBassNet Pad</b><span>Drag the latent z while three prepared songs play; the bass follows from the next frame on.</span></a></li>
+    <li><a href="zpad/"><b>BassNet Z-Pad</b><span>Listening demo: drag across the model's latent control pad and hear the generated bass line change over three songs.</span></a></li>
+    <li><a href="slakh-report/"><b>BassNet on Slakh2100</b><span>The causal BassNet trained on Slakh2100: data, test results, latent control and listening examples.</span></a></li>
+    <li><a href="streaming/"><b>Streaming BassNet</b><span>The model running frame by frame: latency, the cost of strictly live decisions, and where the errors come from.</span></a></li>
+  </ul>
+  <footer>
+    <div>Based on BassNet: M. Grachten, S. Lattner, E. Deruty, “BassNet: A Variational Gated Autoencoder for Conditional
+      Generation of Bass Guitar Tracks with Learned Interactive Control”, <i>Applied Sciences</i> 10(18), 2020. This is an independent reimplementation.</div>
+    <div>Audio excerpts from <a href="https://zenodo.org/records/4599666">Slakh2100</a> (E. Manilow et al., WASPAA 2019), licensed
+      <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; the generated bass lines are model output.</div>
+  </footer>
+</div>
+
+</html>
