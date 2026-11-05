@@ -1,0 +1,744 @@
+<title>LiveBassNet Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: an instrument face. Input on top (drop zone + timeline), the latent
+   pad as the main control, mixer and a scrolling bass roll around it. */
+:root {
+  --bg: #f3f4f1;
+  --panel: #ffffff;
+  --ink: #1b1f1d;
+  --muted: #5d6662;
+  --line: #d9ddd8;
+  --accent: #0f7c74;
+  --stale: #b9c2be;
+  --heat: 15,124,116;
+  --warn: #a14a1d;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111413; --panel: #191d1b; --ink: #e8ece9; --muted: #98a39e; --line: #2c3330;
+  --accent: #4fd1c1; --stale: #46504c; --heat: 79,209,193; --warn: #f0a070; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111413; --panel: #191d1b; --ink: #e8ece9; --muted: #98a39e; --line: #2c3330;
+  --accent: #4fd1c1; --stale: #46504c; --heat: 79,209,193; --warn: #f0a070; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+header h1 { font-family: var(--display); font-weight: 600; font-size: 30px; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.label { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.input { display: grid; gap: 12px; }
+#drop { border: 1.5px dashed var(--stale); border-radius: 8px; padding: 18px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; cursor: pointer; }
+#drop.over { border-color: var(--accent); background: rgba(var(--heat), .08); }
+#drop .big { font-weight: 600; }
+#drop .hint { color: var(--muted); font-size: 13.5px; flex-basis: 100%; }
+.btn { font: 500 14px var(--body); border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.tempo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
+.tempo select { font: 500 14px var(--body); background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
+#tap.on { border-color: var(--accent); color: var(--accent); }
+.btn:focus-visible, input:focus-visible, select:focus-visible, #pad:focus-visible, #drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.statusline { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; font: 12.5px var(--mono); color: var(--muted); }
+.statusline b { color: var(--ink); font-weight: 500; }
+#err { color: var(--warn); font-size: 13.5px; }
+.transport { display: flex; gap: 12px; align-items: center; }
+#tl { flex: 1; min-width: 0; height: 34px; display: block; cursor: pointer; border-radius: 4px; }
+#time { font: 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+.main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .main { grid-template-columns: minmax(0, 1fr); } }
+#pad { display: block; width: 100%; aspect-ratio: 1; max-width: 100%; touch-action: none; cursor: crosshair; border-radius: 6px; }
+.padaxes { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); gap: 8px; flex-wrap: wrap; }
+.side { display: grid; gap: 16px; min-width: 0; }
+.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.readout div { display: grid; gap: 2px; min-width: 0; }
+.readout b { font: 500 20px var(--mono); font-variant-numeric: tabular-nums; }
+.mixer { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 52px; gap: 10px; align-items: center; }
+.row input[type=range] { width: 100%; accent-color: var(--accent); }
+.row output { font: 12px var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.row select { font: 13px var(--body); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; grid-column: 2 / 4; }
+.toggles { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.toggles label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.toggles input { accent-color: var(--accent); }
+#roll { display: block; width: 100%; height: 180px; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.sw { display: inline-block; width: 18px; height: 6px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.help { color: var(--muted); font-size: 12.5px; line-height: 1.45; margin: -4px 0 2px; }
+.quick { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; }
+.quick b { color: var(--accent); }
+.notes { color: var(--muted); font-size: 13.5px; max-width: 78ch; display: grid; gap: 8px; }
+.notes p { margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>LiveBassNet Studio <span style="font-weight:400;color:var(--muted)">· multi-rate model, real recordings</span></h1>
+    <p>Load a song without its bass, press play, and steer the generated bass line by dragging the point on the pad. Everything runs in this browser tab: the audio is analysed and a strictly causal BassNet generates the bass here, and nothing is uploaded anywhere.</p>
+    <ol class="quick"><li><b>1</b> Click “Use the example song”, or drop a song without its bass</li><li><b>2</b> Press Play</li><li><b>3</b> Drag the dot on the pad while it plays</li></ol>
+  </header>
+
+  <section class="panel input">
+    <div id="drop" tabindex="0" role="button" aria-label="Choose or drop an audio file">
+      <span class="big">Drop an audio file here, or click to choose one</span>
+      <button class="btn" id="example" type="button">Use the example song</button>
+      <span class="hint">A mix of drums, guitars, keys, vocals… without bass (like the stems in the original BassNet demo). WAV, MP3, OGG or M4A. The first 60 seconds are used.</span>
+      <input id="file" type="file" accept="audio/*" hidden>
+    </div>
+    <div class="statusline"><span>Song: <b id="song">none</b></span><span>Compute: <b id="backend">starting…</b></span><span id="progress"></span><span id="beatinfo"></span></div>
+    <div id="err" role="alert"></div>
+    <div id="diag" class="statusline" style="font-size:11.5px"></div>
+    <div class="transport">
+      <button class="btn primary" id="play" type="button" disabled>Play</button>
+      <canvas id="tl" aria-label="Timeline. Click to jump. Dark: bass computed at the current z; light: computed at an earlier z."></canvas>
+      <span id="time">0:00.0</span>
+    </div>
+    <div class="tempo">
+      <span class="label">Beat</span>
+      <button class="btn" id="tap" type="button" disabled title="Tap on each beat while the song plays, starting on a downbeat (key: T)">Tap beat (T)</button>
+      <select id="meter" aria-label="Beats per bar" title="Beats per bar"><option value="4" selected>4/4</option><option value="3">3/4</option></select>
+      <button class="btn" id="auto" type="button" disabled>Back to tracked beats</button>
+      <span class="hint" id="tapinfo">The bass follows the beat the page detects in your song. If it sounds off the beat, play the song and tap along on each beat, starting on the first beat of a bar (4/4 or 3/4): after 4 taps the bass follows a steady beat at your tempo.</span>
+    </div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-label="Latent pad">
+      <div class="label" style="margin-bottom:8px">Latent z · shading = typical notes per minute at that z</div>
+      <canvas id="pad" tabindex="0" aria-label="Latent pad. Drag, or use the arrow keys, to move z."></canvas>
+      <div class="padaxes"><span id="zl">← z₁</span><span id="padhint">darker = more notes</span><span id="zr">z₁ →</span></div>
+      <p class="help" style="margin-top:8px">Drag the dot, or use the arrow keys, to change the style of the bass while the song plays. The two axes are a style control the model learned by itself (no fixed meaning); the shading shows how many notes per minute it typically plays at each point, darker meaning busier. The change is heard from the next notes on.</p>
+    </section>
+
+    <div class="side">
+      <section class="panel readout" aria-live="polite">
+        <div><span class="label">z₁, z₂</span><b id="zval">0.00, 0.00</b></div>
+        <div><span class="label">Up to date</span><b id="fresh">–</b></div>
+        <div><span class="label">Playing</span><b id="note">–</b></div>
+        <p class="help" style="grid-column:1/-1;margin:0">“Up to date”: how much of the song is already generated at the current position of the dot (generation runs ahead of playback). “Playing”: the bass note sounding now.</p>
+      </section>
+
+      <section class="panel mixer">
+        <div class="label">Mixer and note decisions</div>
+        <div class="row"><label for="vBand">Song</label><input id="vBand" type="range" min="0" max="100" value="70"><output for="vBand">70</output></div>
+        <p class="help">Volume of your song.</p>
+        <div class="row"><label for="vGen">Generated bass</label><input id="vGen" type="range" min="0" max="100" value="85"><output for="vGen">85</output></div>
+        <p class="help">Volume of the generated bass.</p>
+        <div class="row"><label for="thr">Onset threshold</label><input id="thr" type="range" min="1" max="40" value="3"><output for="thr">0.03</output></div>
+        <p class="help">How sure the model must be before it plays a new note. Lower: more notes; higher: fewer notes, only the clearest attacks.</p>
+        <div class="row"><label for="stay">Pitch smoothing</label><input id="stay" type="range" min="0" max="95" value="80"><output for="stay">0.80</output></div>
+        <p class="help">How strongly the chosen pitch holds still. Higher: steadier notes, fewer stray pitches; lower: follows chord changes faster.</p>
+        <div class="row"><label for="model">Model</label>
+          <select id="model">
+            <option value="slim3m" selected>slim3 · more real data (default)</option>
+            <option value="slim3">slim3 · earlier version</option>
+            <option value="b">B · more accurate pitch, twice the compute</option>
+          </select></div>
+        <p class="help">Which trained network plays the bass. The default suits most songs; B needs twice the computing power and may fall behind on slower computers.</p>
+        <div class="row"><label for="vthr">Rests</label><input id="vthr" type="range" min="30" max="90" value="60"><output for="vthr">0.60</output></div>
+        <p class="help">How readily the bass stops between notes. Higher: more space and shorter notes; lower: a more continuous line.</p>
+        <div class="toggles"><label><input id="glide" type="checkbox"> Follow pitch inside a note</label><label><input id="click" type="checkbox"> Click on tracked beats</label></div>
+        <p class="help">“Follow pitch”: off, each note keeps the pitch it started on; on, a held note may slide to a new pitch. “Click”: a click on every beat the page detected (higher on the first beat of a bar), to check that it found the beat.</p>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" style="display:grid;gap:10px">
+    <div class="label">Bass roll · last 4 seconds</div>
+    <canvas id="roll" aria-label="Scrolling piano roll of the generated bass"></canvas>
+    <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>Generated bass, as played</span></div>
+  </section>
+
+  <section class="notes">
+    <p><b>What happens.</b> The file is decoded, mixed to mono and resampled to 16 kHz. The page then computes the same causal constant-Q transform used in training (264 bins, A0 upwards, 10 ms hop, each frame ending at its own timestamp). A small causal beat network reads it (trained on Slakh2100’s MIDI beats and on 44 hours of varied real music labelled by the offline tracker Beat This!), and a bar-pointer filter turns its output into the beat phase, the sixteenth-note phase, the time to the next beat and the bar phase of every frame (“Click on tracked beats” lets you hear the tracking; it needs a few seconds to lock on). The bass model is the multi-rate streaming BassNet: one causal stream per time resolution (10 ms to 640 ms), fused with the beat features, then a decoder that outputs, for every frame, the pitch, the level, the onset curve and whether the bass should be playing at all. It was trained on Slakh2100 and then fine-tuned on real recordings (MUSDB18, half of the training segments) with offline beat and bass transcriptions as targets. Two sizes: “slim3” has lighter streams, shared output heads and a shorter decoder; its notes and rests sit closer to a real bass line’s, and it needs about half the compute. “B” is the full model: its pitch is more often right, but its rests come as long gaps. The default slim3 was fine-tuned on more real recordings (MUSDB18 and MoisesDB), half of the time with the beats of the live tracker instead of reference beats, as it gets them here; it places more notes on the right pitch. Switching keeps the analysed song. It runs with onnxruntime-web, on the GPU through WebGPU when the browser offers it, otherwise on several CPU threads, in chunks of 64 frames; each output frame uses only audio up to that frame, so this equals running it frame by frame.</p>
+    <p><b>Note decisions.</b> A note starts one frame after the onset curve peaks above the onset threshold, if the model says the bass is playing there. It ends at the next note or when that “playing” output falls below the rest threshold, but not before it has sounded 80 ms (shorter notes were mostly flickers of that output): raise “Rests” for more space between notes, lower it for a more continuous line. By default a note keeps the pitch chosen at its start (“Follow pitch inside a note” lets it glide). The pitch goes through a causal smoothing filter first (“Pitch smoothing”, 0 = off), which removes rapid back-and-forth between notes and adds no delay.</p>
+    <p><b>Moving z.</b> When you let go of the point (and every 0.3 s while dragging), the bass is recomputed from just ahead of the playhead onwards. The timeline shows how far the new z has got. On a CPU it can run slower than real time, and parts not yet recomputed play the previous z.</p>
+    <p><b>Limits.</b> A song that already contains bass mostly makes the model double that bass. The pad shading is the average note rate over the first minute of three MUSDB18 test songs, to give a sense of direction only.</p>
+  </section>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const MAX_S = 60, FPS = 100, SR16 = 16000, HOP = 160;
+const NOTE = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const noteName = m => m > 0 ? NOTE[m % 12] + (Math.floor(m / 12) - 1) : '–';
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+const err = msg => { $('err').textContent = msg || ''; };
+
+// ---------------- compute: workers ----------------
+let cfg, density, models = {}, wasm = null;
+let workers = [];                  // {w, kind, busy, alive, chunk}
+let nF = 0;                        // frames of the current song
+let gen = 0, Z = [0, 0], every = 64, queue = [], qi = 0;   // every: frames per model chunk (cfg.chunk)
+let midi, lvl, ons, vos, fresh, posts;  // per frame results (vos: voicing; posts: 88-semitone posterior)
+let freshCount = 0, doneT0 = 0, doneFrames = 0, tlPending = false;
+let BF = null, FEAT = null, beatsPending = null;      // tracked beat features (frames x 7)
+let TRACKED = null, taps = [], tapGrid = null;   // the tracker's beat features; taps (song frames); the tapped grid
+let periods = null;                      // tracked beat period in frames, causal (last interval between beats)
+function beatPeriods(bf) {
+  const n = bf.length / 7, out = new Float32Array(n);
+  let last = -1, per = 50;
+  for (let t = 0; t < n; t++) {
+    if (t > 0 && beatPhase(t) < beatPhase(t - 1) - 0.5) { if (last >= 0 && t - last >= 25 && t - last <= 120) per = t - last; last = t; }
+    out[t] = per;
+  }
+  return out;
+}
+const beatPhase = t => { const v = Math.atan2(BF[t * 7], BF[t * 7 + 1]) / (2 * Math.PI); return v < 0 ? v + 1 : v; };
+const barPhase = t => { const v = Math.atan2(BF[t * 7 + 5], BF[t * 7 + 6]) / (2 * Math.PI); return v < 0 ? v + 1 : v; };
+function beatSummary(bf) {
+  // median tracked tempo over the second half of the clip
+  const n = bf.length / 7, per = [];
+  let last = -1;
+  for (let t = 1; t < n; t++) if (beatPhase(t) < beatPhase(t - 1) - 0.5) { if (last >= 0 && t > n / 2) per.push(t - last); last = t; }
+  per.sort((a, b) => a - b);
+  return per.length ? `Tracked tempo ≈ ${Math.round(6000 / per[Math.floor(per.length / 2)])} bpm` : 'No steady beat found';
+}
+
+// shared assets (once): onnxruntime's wasm, the beat network and the bar-pointer HMM
+const get = async (u, t) => { const r = await fetch(u); if (!r.ok) throw new Error(`${u}: ${r.status}`); return t === 'json' ? r.json() : r.arrayBuffer(); };
+// binary assets are published as base64 text (the host serves text, not .onnx / .gz)
+const b64 = async u => { const r = await fetch(u); if (!r.ok) throw new Error(`${u}: ${r.status}`); const s = await r.text(); const a = new Uint8Array(s.length * 3 / 4 - (s.endsWith('==') ? 2 : s.endsWith('=') ? 1 : 0)); const bin = atob(s); for (let i = 0; i < a.length; i++) a[i] = bin.charCodeAt(i); return a.buffer; };
+async function loadShared() {
+  const [gz, bn, hm] = await Promise.all([b64('ort-jsep.wasm.gz.b64.txt'), b64('model/beatnet.onnx.b64.txt'), get('model/bar_hmm.json', 'json')]);
+  models.beatnet = bn; models.hmm = hm;
+  wasm = await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+// one bass model (model/<key>/): its graphs, its pad density and its default decision settings
+async function loadModel(key) {
+  const dir = `model/${key}/`;
+  [cfg, density] = await Promise.all([get(dir + 'model.json', 'json'), get(dir + 'density.json', 'json')]);
+  [models.zmap, models.chunk] = await Promise.all([b64(dir + 'zmap.onnx.b64.txt'), b64(dir + 'chunk.onnx.b64.txt')]);
+  every = cfg.chunk;
+  $('thr').value = Math.round(density.threshold * 100); $('thr').nextElementSibling.textContent = density.threshold.toFixed(2);
+  $('vthr').value = Math.round(density.voicing * 100); $('vthr').nextElementSibling.textContent = density.voicing.toFixed(2);
+  $('padhint').textContent = padHint(density);
+}
+// where the busiest and sparsest corners of this model's pad lie (screen directions; z₂ points up)
+function padHint(d) {
+  // centroid of the busiest / sparsest 15% of the grid, as a screen direction from the centre
+  const G = d.g, c = (G - 1) / 2, idx = d.npm.map((v, i) => i).sort((p, q) => d.npm[p] - d.npm[q]), m = Math.max(1, Math.round(0.15 * G * G));
+  const dir = ids => { let x = 0, y = 0; for (const i of ids) { x += i % G - c; y += Math.floor(i / G) - c; } x /= ids.length; y /= ids.length;
+    const h = Math.abs(x) > c / 3 ? Math.sign(x) : 0, v = Math.abs(y) > c / 3 ? Math.sign(y) : 0;
+    return { '1,1': '↗', '-1,1': '↖', '1,-1': '↘', '-1,-1': '↙', '0,1': '↑', '0,-1': '↓', '1,0': '→', '-1,0': '←', '0,0': '·' }[`${h},${v}`]; };
+  return `busier ${dir(idx.slice(-m))} · sparser ${dir(idx.slice(0, m))}`;
+}
+
+// The worker code (worker.js + core.js) is fetched as text and run from a blob:
+// URL: the viewer's sandbox has an opaque origin, so a module worker cannot load
+// the page's own files directly.  If no worker starts, the same code runs in the
+// page itself (slower, and the page may stutter while it computes).
+let srcURL = null, classicURL = null, mainThread = false;
+const startErrors = [];
+const ORT_DIR = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+async function workerSource() {
+  if (srcURL) return srcURL;
+  const [core, wk] = await Promise.all(['core.js', 'worker.js'].map(u => fetch(u).then(r => r.text())));
+  const inlined = wk.replace(/^import \{[^}]*\} from '\.\/core\.js';$/m, core.replace(/^export /gm, ''));
+  srcURL = URL.createObjectURL(new Blob([inlined], { type: 'text/javascript' }));
+  // the same code as a classic worker script: the UMD build of onnxruntime-web
+  // through importScripts, no ES module syntax
+  const classic = inlined
+    .replace(/^import \* as ort from '[^']*';$/m,
+      `importScripts('${ORT_DIR}ort.webgpu.min.js');\nort.env.wasm.wasmPaths = '${ORT_DIR}';`)
+    .replace(/^export /gm, '');
+  classicURL = URL.createObjectURL(new Blob([classic], { type: 'text/javascript' }));
+  return srcURL;
+}
+
+function initMsg(kind) {
+  return { type: 'init', ep: kind, cfg, wasm: wasm.slice(0), models: { zmap: models.zmap.slice(0), chunk: models.chunk.slice(0) },
+           beatnet: models.beatnet ? models.beatnet.slice(0) : null, hmm: models.hmm || null };
+}
+
+function attach(rec, resolve) {
+  const timer = setTimeout(() => { startErrors.push(`${rec.kind}: no answer after 60 s`); resolve(null); }, 60000);
+  rec.onmsg = m => {
+    if (m.type === 'ready') { clearTimeout(timer); rec.alive = true; resolve(rec); }
+    else if (m.type === 'error' && m.where === 'init') { clearTimeout(timer); startErrors.push(`${rec.kind}: ${m.msg}`); rec.w.terminate(); resolve(null); }
+    else onWorker(rec, m);
+  };
+  return timer;
+}
+
+function spawn(kind, url, type = 'module') {
+  return new Promise((resolve) => {
+    let w;
+    try { w = new Worker(url, { type }); }
+    catch (e) { startErrors.push(`${type} ${kind} worker: ${e.message || e}`); resolve(null); return; }
+    const rec = { w, kind, busy: false, alive: false, chunk: null };
+    const timer = attach(rec, resolve);
+    w.onmessage = e => rec.onmsg(e.data);
+    w.onerror = e => { e.preventDefault?.(); clearTimeout(timer); startErrors.push(`${type} ${kind} worker: ${e.message || 'the worker script failed to load'}`); w.terminate(); resolve(null); };
+    w.postMessage(initMsg(kind));
+  });
+}
+
+async function inPage(url) {
+  const mod = await import(url);
+  return new Promise((resolve) => {
+    const rec = { kind: 'wasm', busy: false, alive: false, chunk: null };
+    const h = mod.makeHandler(msg => setTimeout(() => rec.onmsg(msg)));
+    rec.w = { postMessage: m => setTimeout(() => h(m)), terminate() {} };
+    attach(rec, resolve);
+    rec.w.postMessage(initMsg('wasm'));
+  });
+}
+
+async function startWorkers() {
+  const url = await workerSource();
+  const nCpu = Math.max(2, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  let hasGpu = false;
+  try { hasGpu = !!(navigator.gpu && await navigator.gpu.requestAdapter()); } catch (e) {}
+  let all = [];
+  for (const [type, u] of [['module', url], ['classic', classicURL]]) {
+    // probe with one worker before starting the rest
+    $('backend').textContent = `starting ${type} workers…`;
+    const first = await spawn('wasm', u, type);
+    if (!first) continue;
+    const more = Array.from({ length: nCpu - 1 }, () => spawn('wasm', u, type));
+    if (hasGpu) more.push(spawn('webgpu', u, type));
+    all = [first, ...(await Promise.all(more)).filter(Boolean)];
+    break;
+  }
+  if (!all.length) {
+    $('backend').textContent = 'workers unavailable, starting in the page…';
+    try { const r = await inPage(url); if (r) { all = [r]; mainThread = true; } }
+    catch (e) { startErrors.push(`in page: ${e.message || e}`); }
+  }
+  workers = all;
+  if (!all.length) throw new Error('The model could not start in this browser. Details: ' + [...new Set(startErrors)].join(' | '));
+  const nGpu = all.filter(r => r.kind === 'webgpu').length, nC = all.length - nGpu;
+  $('backend').textContent = mainThread ? 'CPU, in the page (workers unavailable; slow)'
+    : (nGpu ? 'WebGPU + ' : '') + `${nC} CPU thread${nC === 1 ? '' : 's'}`;
+  if (startErrors.length) {
+    console.warn('LiveBassNet: compute threads that did not start:', startErrors);
+    $('diag').textContent = (mainThread ? 'Threads unavailable: ' : `Using ${all[0].w instanceof Worker ? 'classic' : ''} worker threads; skipped: `) + [...new Set(startErrors)].join(' | ');
+  }
+}
+
+// CQT, split across workers
+let cqtPending = null;
+function computeCQT(audio16) {
+  return new Promise(resolve => {
+    nF = Math.floor(audio16.length / HOP) + 1;
+    const feat = new Float32Array(nF * 264);
+    const cpu = workers.filter(r => r.alive);
+    const step = Math.ceil(nF / (cpu.length * 4));
+    const parts = []; for (let a = 0; a < nF; a += step) parts.push([a, Math.min(nF, a + step)]);
+    let left = parts.length, pi = 0;
+    cqtPending = { feat, onPart(m) {
+      feat.set(m.out, m.a * 264);
+      left--; $('progress').textContent = `Analysing audio ${Math.round(100 * (1 - left / parts.length))}%`;
+      if (left === 0) { cqtPending = null; resolve(feat); }
+    }, next(rec) {
+      if (pi < parts.length) { const [a, b] = parts[pi++]; rec.busy = true; rec.w.postMessage({ type: 'cqt', audio: audio16, a, b }); }
+    } };
+    cpu.forEach(r => cqtPending.next(r));
+  });
+}
+
+function onWorker(rec, m) {
+  if (m.type === 'cqt') { rec.busy = false; cqtPending?.onPart(m); if (cqtPending) cqtPending.next(rec); return; }
+  if (m.type === 'featok') { rec.featReady = true; dispatch(); return; }
+  if (m.type === 'beats') { rec.busy = false; beatsPending?.(m.bf); return; }
+  if (m.type === 'res') {
+    rec.busy = false; rec.chunk = null;
+    if (m.gen === gen) {
+      for (let i = 0; i < m.frames.length; i++) {
+        const f = m.frames[i]; if (f < 0 || f >= nF) continue;
+        midi[f] = m.midi[i]; lvl[f] = m.lv[i]; ons[f] = m.on[i]; vos[f] = m.vo[i]; posts.set(m.post.subarray(i * 88, i * 88 + 88), f * 88);
+        if (!fresh[f]) { fresh[f] = 1; freshCount++; }
+      }
+      doneFrames += m.frames.filter(f => f < nF).length;
+      const sec = (performance.now() - doneT0) / 1000;
+      $('progress').textContent = freshCount >= nF ? `Done · ${(doneFrames / FPS / sec).toFixed(1)}× real time`
+        : `Generating ${Math.round(100 * freshCount / nF)}% · ${(doneFrames / FPS / Math.max(sec, 0.1)).toFixed(1)}× real time`;
+      $('fresh').textContent = `${Math.round(100 * freshCount / nF)}%`;
+      if (!playing && !tlPending) { tlPending = true; requestAnimationFrame(() => { tlPending = false; drawTimeline(playFrame); }); }
+    }
+    dispatch(); return;
+  }
+  if (m.type === 'error') {
+    rec.busy = false;
+    if (rec.chunk && rec.chunk.gen === gen) { queue.push(...rec.chunk.ts); }   // retry elsewhere
+    rec.chunk = null;
+    if (rec.kind === 'webgpu') { rec.alive = false; rec.w.terminate(); $('backend').textContent = $('backend').textContent.replace('WebGPU + ', ''); }
+    else err('A compute thread failed: ' + m.msg);
+    dispatch();
+  }
+}
+
+function buildQueue(from) {
+  queue = []; qi = 0;
+  const first = t => t + ((every - 1 - t) % every + every) % every;   // next t with t ≡ every-1 (mod every)
+  for (let t = first(Math.max(0, from)); t < nF; t += every) queue.push(t);
+  for (let t = every - 1; t < Math.max(0, from); t += every) queue.push(t);
+  if (nF > 0 && !queue.includes(first(nF - 1))) queue.push(first(nF - 1));   // the chunk holding the last frame
+}
+
+function dispatch() {
+  for (const rec of workers) {
+    if (!rec.alive || rec.busy || !rec.featReady || qi >= queue.length) continue;
+    const size = rec.kind === 'webgpu' ? 4 : 1;   // chunks of 64 frames per call
+    const ts = queue.slice(qi, qi + size); qi += ts.length;
+    rec.busy = true; rec.chunk = { gen, ts };
+    rec.w.postMessage({ type: 'run', gen, z: Z, every, ts });
+  }
+}
+
+function regenerate(from) {
+  gen++; fresh && fresh.fill(0); freshCount = 0; doneFrames = 0; doneT0 = performance.now();
+  buildQueue(from); dispatch();
+}
+
+// ---------------- tapped beat ----------------
+// Beat features of a steady grid (beat k at frame a + P k, bar of nb beats, beat 0 a
+// downbeat) in the tracker's layout: beat phase, 16th phase, time to the next beat,
+// bar phase.  The tempo and the phase come from the listener's taps, like a tempo set
+// in a DAW, so the grid also covers the song before the taps.
+function gridFeatures(a, P, nb, n) {
+  const out = new Float32Array(n * 7);
+  for (let t = 0; t < n; t++) {
+    const pos = (t - a) / P, k = Math.floor(pos), ph = pos - k, kb = ((k % nb) + nb) % nb, o = t * 7;
+    const bar = 2 * Math.PI * (kb + ph) / nb;
+    out[o] = Math.sin(2 * Math.PI * ph); out[o + 1] = Math.cos(2 * Math.PI * ph);
+    out[o + 2] = Math.sin(8 * Math.PI * ph); out[o + 3] = Math.cos(8 * Math.PI * ph);
+    out[o + 4] = Math.min((1 - ph) * P / 100, 1);
+    out[o + 5] = Math.sin(bar); out[o + 6] = Math.cos(bar);
+  }
+  return out;
+}
+function useBeats(bf) {
+  BF = bf; periods = beatPeriods(BF);
+  workers.forEach(r => { r.featReady = false; r.w.postMessage({ type: 'feat', n: nF, feat: FEAT, beats: BF }); });
+  regenerate(playFrame);
+}
+function setBeatSource() {
+  $('tap').disabled = !TRACKED; $('auto').disabled = !tapGrid;
+  $('tap').classList.toggle('on', !!tapGrid);
+}
+function tap() {
+  if (!TRACKED || !nF) return;
+  if (!playing) { $('tapinfo').textContent = 'Play the song first, then tap along on each beat.'; return; }
+  const f = (ctx.currentTime - t0) * FPS;
+  if (taps.length && (f - taps[taps.length - 1] > 200 || f < taps[taps.length - 1])) taps = [];   // a pause of 2 s starts over
+  taps.push(f);
+  if (taps.length < 4) { $('tapinfo').textContent = `Tap ${taps.length}… (${4 - taps.length} more)`; return; }
+  // least-squares line through the last (up to 8) taps: frame = a + P k, k counted from the first tap
+  const k0 = taps.length - Math.min(taps.length, 8), ks = [], fs = [];
+  for (let k = k0; k < taps.length; k++) { ks.push(k); fs.push(taps[k]); }
+  const mk = ks.reduce((x, y) => x + y) / ks.length, mf = fs.reduce((x, y) => x + y) / fs.length;
+  let num = 0, den = 0;
+  for (let i = 0; i < ks.length; i++) { num += (ks[i] - mk) * (fs[i] - mf); den += (ks[i] - mk) ** 2; }
+  const P = num / den, a = mf - P * mk;                 // a: the first tap, beat 1 of a bar
+  if (!(P >= 25 && P <= 150)) { $('tapinfo').textContent = 'Taps too uneven, or outside 40–240 bpm: try again.'; taps = []; return; }
+  tapGrid = { a, P };
+  $('tapinfo').textContent = `Following your beat: ${(6000 / P).toFixed(1)} bpm, ${$('meter').value}/4 (keep tapping to refine).`;
+  $('beatinfo').textContent = `Tapped tempo ${(6000 / P).toFixed(1)} bpm`;
+  setBeatSource();
+  useBeats(gridFeatures(a, P, +$('meter').value, nF));
+}
+$('tap').addEventListener('click', tap);
+document.addEventListener('keydown', e => {
+  if ((e.key === 't' || e.key === 'T') && !e.repeat && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) tap();
+});
+$('meter').addEventListener('change', () => { if (tapGrid) useBeats(gridFeatures(tapGrid.a, tapGrid.P, +$('meter').value, nF)); });
+$('auto').addEventListener('click', () => {
+  if (!TRACKED) return;
+  tapGrid = null; taps = []; setBeatSource();
+  $('tapinfo').textContent = 'Back to the beat tracker.';
+  useBeats(TRACKED);
+  $('beatinfo').textContent = beatSummary(TRACKED);
+});
+
+// ---------------- song loading ----------------
+let ctx = null, songBuf = null, master, bandGain, genGain, osc, filt, amp;
+function audioCtx() {
+  if (ctx) return ctx;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+  bandGain = ctx.createGain(); genGain = ctx.createGain(); bandGain.connect(master); genGain.connect(master);
+  osc = ctx.createOscillator();
+  osc.setPeriodicWave(ctx.createPeriodicWave(new Float32Array([0, 1, 0.5, 0.33, 0.12]), new Float32Array(5)));
+  filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 500; filt.Q.value = 3;
+  amp = ctx.createGain(); amp.gain.value = 0;
+  osc.connect(filt); filt.connect(amp); amp.connect(genGain); osc.start();
+  mixer();
+  return ctx;
+}
+
+async function loadSong(arrayBuf, name) {
+  err(''); stop();
+  $('play').disabled = true; $('song').textContent = name; $('progress').textContent = 'Decoding…';
+  const c = audioCtx();
+  let buf;
+  try { buf = await c.decodeAudioData(arrayBuf); }
+  catch (e) { err(`Could not decode “${name}”. Try a WAV or MP3 file.`); $('progress').textContent = ''; return; }
+  const dur = Math.min(buf.duration, MAX_S);
+  // the clip as heard (original rate) ...
+  const clip = c.createBuffer(buf.numberOfChannels, Math.round(dur * buf.sampleRate), buf.sampleRate);
+  for (let ch = 0; ch < buf.numberOfChannels; ch++) clip.copyToChannel(buf.getChannelData(ch).subarray(0, clip.length), ch);
+  songBuf = clip;
+  // ... and as analysed (mono, 16 kHz)
+  const off = new OfflineAudioContext(1, Math.ceil(dur * SR16), SR16);
+  const src = off.createBufferSource(); src.buffer = clip; src.connect(off.destination); src.start();
+  const audio16 = (await off.startRendering()).getChannelData(0).slice();
+  workers.forEach(r => r.featReady = false);
+  const feat = FEAT = await computeCQT(audio16);
+  midi = new Uint8Array(nF); lvl = new Float32Array(nF); ons = new Float32Array(nF); vos = new Float32Array(nF); fresh = new Uint8Array(nF); played = new Uint8Array(nF); posts = new Float32Array(nF * 88);
+  BF = null;
+  if (cfg.beat_dim) {
+    // beat tracking: the beat network + the bar-pointer filter, once per song (independent of z)
+    $('progress').textContent = 'Tracking beats…';
+    const t0 = performance.now();
+    const rec = workers.find(r => r.alive && r.kind === 'wasm') || workers[0];
+    BF = await new Promise(res => { beatsPending = res; rec.busy = true; rec.w.postMessage({ type: 'beats', n: nF, feat: feat.slice(0) }); });
+    beatsPending = null;
+    TRACKED = BF; taps = []; tapGrid = null; setBeatSource();
+    periods = beatPeriods(BF);
+    $('beatinfo').textContent = beatSummary(BF) + ` · tracked in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+  }
+  workers.forEach(r => r.w.postMessage({ type: 'feat', n: nF, feat, beats: BF }));
+  playFrame = 0; regenerate(0);
+  $('play').disabled = false;
+  drawTimeline(0); drawRoll(0);
+}
+
+// ---------------- playback + causal note decisions ----------------
+let playing = false, srcNode = null, t0 = 0, nextFrame = 0, timer = null, playFrame = 0, played = null;
+const tracker = { last: -1e9, active: false, midi: 0, armed: true, release: Infinity };
+// causal forward filter over semitones (streaming/simulate.py, B4):
+// alpha_t ∝ p_t · (stay · alpha_{t-1} + (1 - stay) / 88); the pitch played is argmax alpha_t
+const alpha = new Float64Array(88).fill(1 / 88);
+function filtered(t, stay) {
+  if (stay <= 0 || lvl[t] === 0 && !fresh[t]) return midi[t];
+  let s = 0, best = 0;
+  for (let k = 0; k < 88; k++) { const a = posts[t * 88 + k] * (stay * alpha[k] + (1 - stay) / 88); alpha[k] = a; s += a; }
+  if (s <= 1e-30) { alpha.fill(1 / 88); return midi[t]; }
+  for (let k = 0; k < 88; k++) { alpha[k] /= s; if (alpha[k] > alpha[best]) best = k; }
+  return 21 + best;
+}
+
+async function start() {
+  if (!songBuf) return;
+  const c = audioCtx(); await c.resume();
+  if (playFrame >= nF - 1) playFrame = 0;
+  t0 = c.currentTime + (mainThread ? 0.45 : 0.08) - playFrame / FPS;
+  srcNode = c.createBufferSource(); srcNode.buffer = songBuf; srcNode.connect(bandGain);
+  srcNode.start(t0 + playFrame / FPS, playFrame / FPS);
+  nextFrame = playFrame; Object.assign(tracker, { last: -1e9, active: false, armed: true }); alpha.fill(1 / 88);
+  played = played && played.length === nF ? played : new Uint8Array(nF);
+  playing = true; $('play').textContent = 'Pause';
+  timer = setInterval(schedule, 20); requestAnimationFrame(tick);
+}
+function stop() {
+  if (!playing) return;
+  playing = false; clearInterval(timer);
+  try { srcNode.stop(); } catch (e) {}
+  amp.gain.cancelScheduledValues(ctx.currentTime); amp.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
+  $('play').textContent = 'Play';
+}
+// a short click on each tracked beat (higher on tracked downbeats), to hear the beat tracking
+function blip(when, down) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.value = down ? 1760 : 1100; g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(0.25, when + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+  o.connect(g); g.connect(master); o.start(when); o.stop(when + 0.06);
+}
+function schedule() {
+  const now = Math.floor((ctx.currentTime - t0) * FPS);
+  const until = Math.min(nF - 1, now + (mainThread ? 40 : 8));
+  const thr = $('thr').value / 100, vthr = $('vthr').value / 100, glide = $('glide').checked, rearm = density.rearm, stay = $('stay').value / 100;
+  const click = $('click').checked && BF;
+  const gate = null;   // no fixed note length: notes end at the next note or when the voicing drops below the rest threshold
+  for (; nextFrame <= until; nextFrame++) {
+    const t = nextFrame, when = t0 + t / FPS, m = filtered(t, stay), lv = lvl[t];
+    if (click && t > 0 && beatPhase(t) < beatPhase(t - 1) - 0.5) blip(when, barPhase(t) < 0.12 || barPhase(t) > 0.88);
+    let fire = false;
+    if (t >= 2) {
+      const o0 = ons[t - 2], o1 = ons[t - 1], o2 = ons[t];
+      if (o2 < thr * rearm) tracker.armed = true;
+      fire = tracker.armed && o1 >= thr && o1 >= o0 && o1 > o2 && (t - 1) - tracker.last >= 5;
+    }
+    if (fire) {
+      tracker.last = t - 1; tracker.armed = false;
+      if (vos[t] >= vthr) {
+        tracker.active = true; tracker.midi = m; tracker.start = t;
+        // note length: release `gate` beats after the start (tracked beat period), so notes breathe
+        tracker.release = gate && periods ? t + Math.max(5, Math.round(gate * periods[t])) : Infinity;
+        const peak = Math.min(1, 0.25 + lv) * 0.55;
+        // plucked envelope: a short dip before the attack, then a fast decay, so repeated notes are heard
+        amp.gain.cancelScheduledValues(when); amp.gain.setTargetAtTime(0.0001, when - 0.012, 0.004);
+        amp.gain.setValueAtTime(0.0001, when);
+        amp.gain.linearRampToValueAtTime(peak, when + 0.005); amp.gain.setTargetAtTime(peak * 0.25, when + 0.005, 0.18);
+        osc.frequency.setValueAtTime(hz(m), when);
+        filt.frequency.cancelScheduledValues(when); filt.frequency.setValueAtTime(1100, when); filt.frequency.setTargetAtTime(420, when + 0.004, 0.12);
+      }
+    } else if (tracker.active && ((vos[t] < vthr && t - tracker.start >= (density.min_len || 0)) || t >= tracker.release)) {
+      tracker.active = false; amp.gain.cancelScheduledValues(when); amp.gain.setTargetAtTime(0, when, 0.03);
+    } else if (tracker.active && glide && m > 0 && m !== tracker.midi) {
+      tracker.midi = m; osc.frequency.setTargetAtTime(hz(m), when, 0.015);
+    }
+    played[t] = tracker.active ? tracker.midi : 0;
+  }
+  if (now >= nF - 1) { stop(); playFrame = 0; }
+}
+function tick() {
+  if (!playing) { drawTimeline(playFrame); return; }
+  playFrame = Math.max(0, Math.min(nF - 1, Math.floor((ctx.currentTime - t0) * FPS)));
+  $('time').textContent = fmt(playFrame / FPS);
+  $('note').textContent = noteName(played[playFrame]);
+  drawTimeline(playFrame); drawRoll(playFrame);
+  requestAnimationFrame(tick);
+}
+function mixer() {
+  const v = id => { const x = $(id).value / 100; $(id).nextElementSibling.textContent = $(id).value; return x * x; };
+  const b = v('vBand'), g = v('vGen');
+  if (!ctx) return;
+  bandGain.gain.setTargetAtTime(b, ctx.currentTime, 0.02); genGain.gain.setTargetAtTime(g, ctx.currentTime, 0.02);
+}
+
+// ---------------- drawing ----------------
+function sizeCanvas(cv) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+  return d;
+}
+function drawTimeline(f) {
+  const cv = $('tl'), d = sizeCanvas(cv), c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  c.fillStyle = css('--bg'); c.fillRect(0, 0, W, H);
+  if (nF && lvl) {
+    const px = W / nF;
+    for (let x = 0; x < W; x++) {
+      const a = Math.floor(x / px), b = Math.max(a + 1, Math.floor((x + 1) / px));
+      let fr = 0, any = 0;
+      for (let t = a; t < b && t < nF; t++) { fr += fresh[t]; any += (lvl[t] > 0 || fresh[t]) ? 1 : 0; }
+      if (fr) { c.fillStyle = css('--accent'); c.fillRect(x, H * 0.55, 1, H * 0.45); }
+      else if (any) { c.fillStyle = css('--stale'); c.fillRect(x, H * 0.55, 1, H * 0.45); }
+      if (played && played[a] > 0) { c.fillStyle = css('--muted'); c.fillRect(x, H * 0.12 + (1 - (played[a] - 26) / 36) * H * 0.3, 1, 2 * d); }
+    }
+    c.fillStyle = css('--ink'); c.fillRect(f * px, 0, 2 * d, H);
+  }
+}
+const pad = $('pad');
+function drawPad() {
+  if (!density) return;
+  const d = sizeCanvas(pad), c = pad.getContext('2d'), S = pad.width, G = density.g, cell = S / G, zm = density.zmax;
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, S, S);
+  const maxN = Math.max(...density.npm, 1);
+  for (let iy = 0; iy < G; iy++) for (let ix = 0; ix < G; ix++) {
+    const v = density.npm[iy * G + ix] / maxN;
+    c.fillStyle = `rgba(${css('--heat')},${(0.03 + 0.5 * Math.sqrt(v)).toFixed(3)})`;
+    c.fillRect(ix * cell, (G - 1 - iy) * cell, cell + 0.5, cell + 0.5);
+  }
+  c.strokeStyle = css('--line'); c.lineWidth = d;
+  c.beginPath(); c.moveTo(S / 2, 0); c.lineTo(S / 2, S); c.moveTo(0, S / 2); c.lineTo(S, S / 2); c.stroke();
+  const px = (Z[0] + zm) / (2 * zm) * S, py = S - (Z[1] + zm) / (2 * zm) * S;
+  c.fillStyle = css('--accent'); c.strokeStyle = css('--panel'); c.lineWidth = 3 * d;
+  c.beginPath(); c.arc(px, py, 10 * d, 0, 2 * Math.PI); c.fill(); c.stroke();
+  c.fillStyle = css('--muted'); c.font = `${11 * d}px ${css('--mono')}`;
+  c.fillText(`z₂ +${zm}`, 6 * d, 14 * d); c.fillText(`z₂ −${zm}`, 6 * d, S - 6 * d);
+  $('zval').textContent = `${Z[0].toFixed(2)}, ${Z[1].toFixed(2)}`;
+}
+function drawRoll(f) {
+  const cv = $('roll'), d = sizeCanvas(cv), c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const span = 400, lo = 26, hi = 62, y = m => H - (m - lo) / (hi - lo) * H, x = t => (t - (f - span)) / span * W;
+  c.fillStyle = css('--panel'); c.fillRect(0, 0, W, H);
+  c.strokeStyle = css('--line'); c.lineWidth = d; c.fillStyle = css('--muted'); c.font = `${10 * d}px ${css('--mono')}`;
+  for (let m = 28; m <= hi; m += 12) { c.beginPath(); c.moveTo(0, y(m)); c.lineTo(W, y(m)); c.stroke(); c.fillText(noteName(m), 4 * d, y(m) - 3 * d); }
+  if (!played) return;
+  const bar = (H / (hi - lo)) * 0.8;
+  c.fillStyle = css('--accent');
+  for (let t = Math.max(0, f - span); t <= f; t++) { const m = played[t]; if (m > 0) c.fillRect(x(t), y(m) - bar / 2, W / span + 0.6, bar); }
+}
+
+// ---------------- interaction ----------------
+let lastSent = 0, dragTimer = null;
+function setZ(z, final) {
+  Z = z; drawPad();
+  if (!nF) return;
+  const now = performance.now();
+  const go = () => { lastSent = performance.now(); regenerate(playFrame + 30); };
+  clearTimeout(dragTimer);
+  if (final || now - lastSent > 300) go(); else dragTimer = setTimeout(go, 300 - (now - lastSent));
+}
+function zFromEvent(ev) {
+  const r = pad.getBoundingClientRect(), zm = density.zmax;
+  const cl = v => Math.max(-zm, Math.min(zm, v));
+  return [cl(((ev.clientX - r.left) / r.width * 2 - 1) * zm), cl((1 - (ev.clientY - r.top) / r.height * 2) * zm)];
+}
+let dragging = false;
+pad.addEventListener('pointerdown', e => { if (!density) return; dragging = true; pad.setPointerCapture(e.pointerId); setZ(zFromEvent(e), false); });
+pad.addEventListener('pointermove', e => { if (dragging) setZ(zFromEvent(e), false); });
+pad.addEventListener('pointerup', e => { if (dragging) { dragging = false; setZ(zFromEvent(e), true); } });
+pad.addEventListener('keydown', e => {
+  const k = { ArrowLeft: [-0.3, 0], ArrowRight: [0.3, 0], ArrowUp: [0, 0.3], ArrowDown: [0, -0.3] }[e.key];
+  if (!k || !density) return; e.preventDefault();
+  const zm = density.zmax, cl = v => Math.max(-zm, Math.min(zm, v));
+  setZ([cl(Z[0] + k[0]), cl(Z[1] + k[1])], true);
+});
+$('tl').addEventListener('click', e => {
+  if (!nF) return;
+  const r = $('tl').getBoundingClientRect();
+  playFrame = Math.max(0, Math.min(nF - 1, Math.floor((e.clientX - r.left) / r.width * nF)));
+  if (playing) { stop(); start(); } else { drawTimeline(playFrame); $('time').textContent = fmt(playFrame / FPS); }
+});
+$('play').onclick = () => playing ? stop() : start();
+document.addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body && songBuf) { e.preventDefault(); playing ? stop() : start(); } });
+['vBand', 'vGen'].forEach(id => $(id).addEventListener('input', mixer));
+$('thr').addEventListener('input', () => { $('thr').nextElementSibling.textContent = ($('thr').value / 100).toFixed(2); });
+$('stay').addEventListener('input', () => { $('stay').nextElementSibling.textContent = ($('stay').value / 100).toFixed(2); });
+
+$('vthr').addEventListener('input', () => { $('vthr').nextElementSibling.textContent = ($('vthr').value / 100).toFixed(2); });
+// switching the bass model: new workers with the other graphs; the song's CQT and
+// tracked beats do not depend on the model and are kept
+$('model').addEventListener('change', async () => {
+  const sel = $('model'); sel.disabled = true; err('');
+  const wasPlaying = playing; stop();
+  try {
+    $('backend').textContent = 'loading model…';
+    workers.forEach(r => r.w.terminate()); workers = [];
+    await loadModel(sel.value); drawPad();
+    await startWorkers();
+    if (nF && FEAT) { workers.forEach(r => r.w.postMessage({ type: 'feat', n: nF, feat: FEAT, beats: BF })); regenerate(playFrame); }
+    if (wasPlaying) start();
+  } catch (e) { err(e.message || String(e)); $('backend').textContent = 'unavailable'; }
+  sel.disabled = false;
+});
+const drop = $('drop');
+const pick = async f => { if (!f) return; if (!workers.length) { err('Still starting the model, try again in a moment.'); return; } await loadSong(await f.arrayBuffer(), f.name); };
+drop.addEventListener('click', e => { if (e.target.id !== 'example') $('file').click(); });
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
+$('file').addEventListener('change', e => pick(e.target.files[0]));
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files[0]); });
+$('example').addEventListener('click', async e => {
+  e.stopPropagation();
+  if (!workers.length) { err('Still starting the model, try again in a moment.'); return; }
+  await loadSong(await (await fetch('example.mp3')).arrayBuffer(), 'Example: Slakh2100 Track01881 (bass removed), 0:60–1:30');
+});
+window.addEventListener('resize', () => { drawPad(); drawTimeline(playFrame); drawRoll(playFrame); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { drawPad(); drawTimeline(playFrame); drawRoll(playFrame); });
+mixer();
+
+(async () => {
+  try {
+    $('backend').textContent = 'loading model…';
+    await Promise.all([loadShared(), loadModel($('model').value)]); drawPad(); drawTimeline(0); drawRoll(0);
+    $('zl').textContent = `← z₁ −${density.zmax}`; $('zr').textContent = `z₁ +${density.zmax} →`;
+    $('backend').textContent = 'starting threads…';
+    await startWorkers();
+  } catch (e) { err(e.message || String(e)); $('backend').textContent = 'unavailable'; }
+})();
+</script>

@@ -31,7 +31,8 @@
   <p>A causal, streaming version of BassNet: it listens to a band without a bass player and generates a bass line from the
      audio it has heard so far, with a 2-D control for the style of the bass. Research in progress.</p>
   <ul>
-    <li><a href="upload/"><b>LiveBassNet Studio</b><span>Load your own song without bass and generate a bass line in the browser, steering it live on the latent pad.</span></a></li>
+    <li><a href="studio_b/"><b>LiveBassNet Studio · real recordings</b><span>The newest model: fine-tuned on real multitrack recordings, with live beat tracking in the browser. Load a song without bass, press play and steer the bass line on the pad; tap the beat if the tracker loses it.</span></a></li>
+    <li><a href="upload/"><b>LiveBassNet Studio · first version</b><span>The first in-browser studio, with the model trained on synthesised music only (Slakh2100).</span></a></li>
     <li><a href="drag/"><b>LiveBassNet Pad</b><span>Drag the latent z while three prepared songs play; the bass follows from the next frame on.</span></a></li>
     <li><a href="zpad/"><b>BassNet Z-Pad</b><span>Listening demo: drag across the model's latent control pad and hear the generated bass line change over three songs.</span></a></li>
     <li><a href="slakh-report/"><b>BassNet on Slakh2100</b><span>The causal BassNet trained on Slakh2100: data, test results, latent control and listening examples.</span></a></li>
@@ -42,6 +43,9 @@
       Generation of Bass Guitar Tracks with Learned Interactive Control”, <i>Applied Sciences</i> 10(18), 2020. This is an independent reimplementation.</div>
     <div>Audio excerpts from <a href="https://zenodo.org/records/4599666">Slakh2100</a> (E. Manilow et al., WASPAA 2019), licensed
       <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; the generated bass lines are model output.</div>
+    <div>The models of “Studio · real recordings” were also trained on <a href="https://sigsep.github.io/datasets/musdb.html">MUSDB18</a>
+      and <a href="https://github.com/moises-ai/moises-db">MoisesDB</a> (both for non-commercial research), and its beat tracker on beats estimated by
+      <a href="https://github.com/CPJKU/beat_this">Beat This!</a>. No audio from these datasets is published here.</div>
   </footer>
 </div>
 
