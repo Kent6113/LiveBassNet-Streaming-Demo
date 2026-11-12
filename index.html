@@ -6,47 +6,60 @@
 <title>LiveBassNet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
+<link rel="stylesheet" href="common/site.css">
 <style>
-  :root { --ground:#f3f6f6; --surface:#fff; --ink:#0e1a1c; --muted:#566b6e; --line:#d9e2e1; --accent:#0d6b70; }
-  @media (prefers-color-scheme: dark) { :root { color-scheme: dark; --ground:#0c1315; --surface:#131e20; --ink:#e4ecea; --muted:#9db0b1; --line:#24363a; --accent:#58bfc2; } }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--ground); color: var(--ink); font-family: "IBM Plex Sans", system-ui, sans-serif; line-height: 1.55; padding-inline: 16px; }
-  .wrap { max-width: 44rem; margin: 0 auto; padding-block: 3rem 4rem; display: flex; flex-direction: column; gap: 1.6rem; }
-  .eyebrow { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-  h1 { margin: 0; font-size: clamp(1.9rem, 5vw, 2.5rem); line-height: 1.1; }
-  p { margin: 0; font-family: "IBM Plex Serif", Georgia, serif; color: var(--muted); }
-  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .7rem; }
-  li a { display: block; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
-         padding: .9rem 1.1rem; color: inherit; text-decoration: none; }
-  li a:hover, li a:focus-visible { border-color: var(--accent); }
-  li b { display: block; font-size: 1.05rem; }
-  li span { font-size: .9rem; color: var(--muted); }
-  footer { border-top: 1px solid var(--line); padding-top: 1rem; font-size: .82rem; color: var(--muted); display: flex; flex-direction: column; gap: .4rem; }
-  footer a { color: var(--accent); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 12px; }
+  .card { display: grid; gap: 6px; align-content: start; text-decoration: none; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; transition: border-color .15s; }
+  .card:hover { border-color: var(--accent); }
+  .card b { font-size: 1.05rem; }
+  .card span { color: var(--muted); font-size: .92rem; }
+  .card .tag { justify-self: start; font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--accent); }
+  .card .tag.lock { background: var(--warn-bg); color: var(--warn); }
+  .card.main { grid-column: 1 / -1; border-color: var(--accent); }
+  ul.older { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  footer { display: grid; gap: 8px; font-size: .82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
 </style>
+</head>
+<body>
 <div class="wrap">
-  <div class="eyebrow">LiveBassNet</div>
-  <h1>Towards a live bass-accompaniment model</h1>
-  <p>A causal, streaming version of BassNet: it listens to a band without a bass player and generates a bass line from the
-     audio it has heard so far, with a 2-D control for the style of the bass. Research in progress.</p>
-  <ul>
-    <li><a href="studio_b/"><b>LiveBassNet Studio · real recordings</b><span>The newest model: fine-tuned on real multitrack recordings, with live beat tracking in the browser. Load a song without bass, press play and steer the bass line on the pad; tap the beat if the tracker loses it.</span></a></li>
-    <li><a href="upload/"><b>LiveBassNet Studio · first version</b><span>The first in-browser studio, with the model trained on synthesised music only (Slakh2100).</span></a></li>
-    <li><a href="drag/"><b>LiveBassNet Pad</b><span>Drag the latent z while three prepared songs play; the bass follows from the next frame on.</span></a></li>
-    <li><a href="zpad/"><b>BassNet Z-Pad</b><span>Listening demo: drag across the model's latent control pad and hear the generated bass line change over three songs.</span></a></li>
-    <li><a href="slakh-report/"><b>BassNet on Slakh2100</b><span>The causal BassNet trained on Slakh2100: data, test results, latent control and listening examples.</span></a></li>
-    <li><a href="streaming/"><b>Streaming BassNet</b><span>The model running frame by frame: latency, the cost of strictly live decisions, and where the errors come from.</span></a></li>
-  </ul>
+  <span class="eyebrow">LiveBassNet</span>
+  <h1>A bass player that listens to your band, live</h1>
+  <p class="lead">LiveBassNet hears a band without a bass player and plays a bass line from the music heard so far, with a beat tracker that runs alongside it. Everything runs in your browser. Try it, rate it, or take the listening test.</p>
+
+  <div class="cards">
+    <a class="card main" href="studio_b/"><span class="tag">Try it</span><b>Studio</b>
+      <span>Load any song, or the example, and hear the generated bass. Steer its style on the pad while it plays, tap the beat if the tracker loses it, and rate the result.</span></a>
+    <a class="card" href="listening-test/"><span class="tag">Take part</span><b>Listening test</b>
+      <span>Ten 10-second excerpts, five bass lines each: rate how well each fits the band. About 15 minutes, headphones recommended.</span></a>
+    <a class="card" href="samples/"><span class="tag lock">Password</span><b>Listening samples</b>
+      <span>Clips from songs the model was trained on to commercial recordings it never saw, with the real bass for comparison.</span></a>
+    <a class="card" href="report/"><span class="tag lock">Password</span><b>Report</b>
+      <span>The case for a paper against the closest work, and the full record of methods and results.</span></a>
+  </div>
+
+  <section style="display:grid;gap:8px">
+    <h2>Earlier demos</h2>
+    <ul class="older">
+      <li><a href="upload/">Studio, first version</a> <span class="muted small">· model trained on synthetic music only</span></li>
+      <li><a href="drag/">LiveBassNet Pad</a> <span class="muted small">· drag the style while three prepared songs play</span></li>
+      <li><a href="zpad/">BassNet Z-Pad</a> <span class="muted small">· the latent control pad, pre-rendered</span></li>
+      <li><a href="streaming/">Streaming BassNet</a> <span class="muted small">· the model frame by frame, and what strict causality costs</span></li>
+      <li><a href="slakh-report/">BassNet on Slakh2100</a> <span class="muted small">· the first report: data, results, latent control</span></li>
+    </ul>
+  </section>
+
   <footer>
     <div>Based on BassNet: M. Grachten, S. Lattner, E. Deruty, “BassNet: A Variational Gated Autoencoder for Conditional
       Generation of Bass Guitar Tracks with Learned Interactive Control”, <i>Applied Sciences</i> 10(18), 2020. This is an independent reimplementation.</div>
-    <div>Audio excerpts from <a href="https://zenodo.org/records/4599666">Slakh2100</a> (E. Manilow et al., WASPAA 2019), licensed
-      <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; the generated bass lines are model output.</div>
-    <div>The models of “Studio · real recordings” were also trained on <a href="https://sigsep.github.io/datasets/musdb.html">MUSDB18</a>
+    <div>Audio excerpts in the studio and the listening test come from <a href="https://zenodo.org/records/4599666">Slakh2100</a> (E. Manilow et al., WASPAA 2019), licensed
+      <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; the listening test uses the test windows of Silent Metronome (Bretz et al., 2026). The generated bass lines are model output.</div>
+    <div>The studio's default models were also trained on <a href="https://sigsep.github.io/datasets/musdb.html">MUSDB18</a>
       and <a href="https://github.com/moises-ai/moises-db">MoisesDB</a> (both for non-commercial research), and its beat tracker on beats estimated by
-      <a href="https://github.com/CPJKU/beat_this">Beat This!</a>. No audio from these datasets is published here.</div>
+      <a href="https://github.com/CPJKU/beat_this">Beat This!</a>. Audio from these and other research datasets appears only on the password-protected pages, encrypted.</div>
   </footer>
 </div>
-
+</body>
 </html>

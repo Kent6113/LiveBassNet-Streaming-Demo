@@ -1,0 +1,123 @@
+{
+ "version": 1,
+ "source": "Silent Metronome's Slakh2100 test windows (bass targets), 10 s each",
+ "conditions": [
+  "real",
+  "ours",
+  "sime",
+  "rule",
+  "anchor"
+ ],
+ "trials": [
+  {
+   "id": "00514",
+   "band": "stimuli/00514_band.mp3",
+   "files": {
+    "real": "stimuli/00514_real.mp3",
+    "ours": "stimuli/00514_ours.mp3",
+    "sime": "stimuli/00514_sime.mp3",
+    "rule": "stimuli/00514_rule.mp3",
+    "anchor": "stimuli/00514_anchor.mp3"
+   }
+  },
+  {
+   "id": "00926",
+   "band": "stimuli/00926_band.mp3",
+   "files": {
+    "real": "stimuli/00926_real.mp3",
+    "ours": "stimuli/00926_ours.mp3",
+    "sime": "stimuli/00926_sime.mp3",
+    "rule": "stimuli/00926_rule.mp3",
+    "anchor": "stimuli/00926_anchor.mp3"
+   }
+  },
+  {
+   "id": "00162",
+   "band": "stimuli/00162_band.mp3",
+   "files": {
+    "real": "stimuli/00162_real.mp3",
+    "ours": "stimuli/00162_ours.mp3",
+    "sime": "stimuli/00162_sime.mp3",
+    "rule": "stimuli/00162_rule.mp3",
+    "anchor": "stimuli/00162_anchor.mp3"
+   }
+  },
+  {
+   "id": "00293",
+   "band": "stimuli/00293_band.mp3",
+   "files": {
+    "real": "stimuli/00293_real.mp3",
+    "ours": "stimuli/00293_ours.mp3",
+    "sime": "stimuli/00293_sime.mp3",
+    "rule": "stimuli/00293_rule.mp3",
+    "anchor": "stimuli/00293_anchor.mp3"
+   }
+  },
+  {
+   "id": "00961",
+   "band": "stimuli/00961_band.mp3",
+   "files": {
+    "real": "stimuli/00961_real.mp3",
+    "ours": "stimuli/00961_ours.mp3",
+    "sime": "stimuli/00961_sime.mp3",
+    "rule": "stimuli/00961_rule.mp3",
+    "anchor": "stimuli/00961_anchor.mp3"
+   }
+  },
+  {
+   "id": "00609",
+   "band": "stimuli/00609_band.mp3",
+   "files": {
+    "real": "stimuli/00609_real.mp3",
+    "ours": "stimuli/00609_ours.mp3",
+    "sime": "stimuli/00609_sime.mp3",
+    "rule": "stimuli/00609_rule.mp3",
+    "anchor": "stimuli/00609_anchor.mp3"
+   }
+  },
+  {
+   "id": "00530",
+   "band": "stimuli/00530_band.mp3",
+   "files": {
+    "real": "stimuli/00530_real.mp3",
+    "ours": "stimuli/00530_ours.mp3",
+    "sime": "stimuli/00530_sime.mp3",
+    "rule": "stimuli/00530_rule.mp3",
+    "anchor": "stimuli/00530_anchor.mp3"
+   }
+  },
+  {
+   "id": "00570",
+   "band": "stimuli/00570_band.mp3",
+   "files": {
+    "real": "stimuli/00570_real.mp3",
+    "ours": "stimuli/00570_ours.mp3",
+    "sime": "stimuli/00570_sime.mp3",
+    "rule": "stimuli/00570_rule.mp3",
+    "anchor": "stimuli/00570_anchor.mp3"
+   }
+  },
+  {
+   "id": "00854",
+   "band": "stimuli/00854_band.mp3",
+   "files": {
+    "real": "stimuli/00854_real.mp3",
+    "ours": "stimuli/00854_ours.mp3",
+    "sime": "stimuli/00854_sime.mp3",
+    "rule": "stimuli/00854_rule.mp3",
+    "anchor": "stimuli/00854_anchor.mp3"
+   }
+  },
+  {
+   "id": "00395",
+   "band": "stimuli/00395_band.mp3",
+   "files": {
+    "real": "stimuli/00395_real.mp3",
+    "ours": "stimuli/00395_ours.mp3",
+    "sime": "stimuli/00395_sime.mp3",
+    "rule": "stimuli/00395_rule.mp3",
+    "anchor": "stimuli/00395_anchor.mp3"
+   }
+  }
+ ]
+}

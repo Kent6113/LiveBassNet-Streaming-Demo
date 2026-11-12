@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiveBassNet Listening Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
+<link rel="stylesheet" href="../common/site.css">
+<script src="../config.js"></script>
+<style>
+  .cond { display: grid; grid-template-columns: 4.5rem 1fr 3.2rem; gap: 10px 14px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .cond:last-child { border-bottom: 0; }
+  .cond .play { min-width: 4.5rem; }
+  .cond .play[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+  .cond output { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+  .cond.unrated output { color: var(--muted); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .scale { display: grid; grid-template-columns: 4.5rem 1fr 3.2rem; gap: 0 14px; font-size: .74rem; color: var(--muted); }
+  .scale div { display: flex; justify-content: space-between; }
+  .bar { height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 0; }
+  fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+  legend { font-weight: 600; margin-bottom: 4px; }
+  .choices { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  @media (max-width: 480px) { .cond, .scale { grid-template-columns: 3.8rem 1fr 2.6rem; } .cond .play { min-width: 3.8rem; padding: 8px 6px; } }
+</style>
+</head>
+<body>
+<div class="wrap narrow">
+  <span class="eyebrow"><a href="../">LiveBassNet</a> · listening test</span>
+
+  <!-- 1. welcome -->
+  <section id="intro" class="panel">
+    <h1>Which bass fits the band?</h1>
+    <p class="lead">You will hear short excerpts of a band without its bass player, each with several bass lines added. Some are played by people, some by computer systems. Rate how well each bass fits the band.</p>
+    <p>There are <b id="ntrials">10</b> excerpts of 10 seconds, with five versions each. It takes about 15 minutes. Please use headphones or good speakers, in a quiet place.</p>
+    <fieldset>
+      <legend>How are you listening?</legend>
+      <div class="choices" id="setup">
+        <label><input type="radio" name="setup" value="headphones"> Headphones</label>
+        <label><input type="radio" name="setup" value="speakers"> External speakers</label>
+        <label><input type="radio" name="setup" value="laptop"> Laptop or phone speakers</label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Your musical background</legend>
+      <div class="choices" id="exp">
+        <label><input type="radio" name="exp" value="none"> No musical training</label>
+        <label><input type="radio" name="exp" value="amateur"> I play an instrument</label>
+        <label><input type="radio" name="exp" value="bass"> I play bass</label>
+        <label><input type="radio" name="exp" value="pro"> Professional musician or audio engineer</label>
+      </div>
+    </fieldset>
+    <label class="small"><input type="checkbox" id="agree"> I agree that my ratings, my two answers above and my browser type are stored anonymously and used for research on automatic bass accompaniment. No name, e-mail or audio of mine is collected.</label>
+    <div class="row"><button class="btn" id="start" type="button" disabled>Start</button><span class="muted small" id="startHint">Answer both questions and tick the box to start.</span></div>
+  </section>
+
+  <!-- 2. a trial -->
+  <section id="trial" class="panel" hidden>
+    <div class="row" style="justify-content:space-between"><h2 id="ttitle">Excerpt 1 of 10</h2><span class="muted small" id="tcount"></span></div>
+    <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+    <p><b>How well does the bass fit the band?</b> Judge timing and harmony together: does it lock to the beat, and does it play notes that suit the chords? The versions loop; switching keeps the position, so compare freely.</p>
+    <div class="row">
+      <button class="btn ghost play" id="bandBtn" type="button" aria-pressed="false">Band alone</button>
+      <button class="btn ghost" id="stopBtn" type="button">Stop</button>
+      <span class="muted small" id="loadMsg">Loading…</span>
+    </div>
+    <div class="scale" aria-hidden="true"><span></span><div><span>Bad</span><span>Poor</span><span>Fair</span><span>Good</span><span>Excellent</span></div><span></span></div>
+    <div id="conds"></div>
+    <p class="small muted" id="trialHint">Play every version and move every slider to continue.</p>
+    <div class="row"><button class="btn" id="next" type="button" disabled>Next excerpt</button></div>
+  </section>
+
+  <!-- 3. done -->
+  <section id="done" class="panel" hidden>
+    <h2>Thank you</h2>
+    <label for="comment">Anything you noticed? (optional)</label>
+    <textarea id="comment" placeholder="For example: what made a bass line sound right or wrong to you"></textarea>
+    <div class="row"><button class="btn" id="submit" type="button">Send my answers</button></div>
+    <p id="sent" hidden></p>
+    <div class="row" id="dlRow" hidden><button class="btn ghost" id="dl" type="button">Download my answers</button><span class="small muted">and send the file to the person who invited you.</span></div>
+  </section>
+
+  <p class="small muted">The excerpts come from the Slakh2100 test set (CC BY 4.0), as used by Silent Metronome (Bretz et al., 2026). All versions of an excerpt are at the same loudness.</p>
+</div>
+
+<script type="module">
+import { send, download } from '../common/feedback.js';
+const $ = s => document.querySelector(s);
+const LETTERS = 'ABCDEFGH';
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let TEST = null, order = [], ti = 0, result = null;
+let ctx = null, buffers = {}, src = null, gain = null, current = null, t0 = 0, offset = 0;
+let trialState = null;
+
+const test = await (await fetch('test.json')).json();
+TEST = test; $('#ntrials').textContent = TEST.trials.length;
+
+function checkIntro() {
+  const ok = document.querySelector('input[name=setup]:checked') && document.querySelector('input[name=exp]:checked') && $('#agree').checked;
+  $('#start').disabled = !ok; $('#startHint').hidden = !!ok;
+}
+document.querySelectorAll('#intro input').forEach(i => i.addEventListener('change', checkIntro));
+
+$('#start').onclick = () => {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  gain = ctx.createGain(); gain.connect(ctx.destination);
+  order = shuffle(TEST.trials.map((_, i) => i));
+  result = { version: TEST.version, participant: { id: uid(), setup: document.querySelector('input[name=setup]:checked').value,
+    experience: document.querySelector('input[name=exp]:checked').value, agent: navigator.userAgent, lang: navigator.language },
+    started: new Date().toISOString(), trials: [] };
+  $('#intro').hidden = true; $('#trial').hidden = false;
+  showTrial();
+};
+
+async function load(url) { const r = await fetch(url); return await ctx.decodeAudioData(await r.arrayBuffer()); }
+
+async function showTrial() {
+  stop();
+  const tr = TEST.trials[order[ti]];
+  $('#ttitle').textContent = `Excerpt ${ti + 1} of ${order.length}`;
+  $('#progress').style.width = `${100 * ti / order.length}%`;
+  const conds = shuffle([...TEST.conditions]);
+  trialState = { id: tr.id, order: conds, ratings: {}, played: {}, t: performance.now() };
+  $('#conds').innerHTML = '';
+  conds.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'cond unrated';
+    row.innerHTML = `<button class="btn ghost play" type="button" aria-pressed="false">${LETTERS[i]}</button>
+      <input type="range" min="0" max="100" step="1" value="50" aria-label="Rating of version ${LETTERS[i]}, 0 bad to 100 excellent">
+      <output>–</output>`;
+    const btn = row.querySelector('button'), rng = row.querySelector('input'), out = row.querySelector('output');
+    btn.onclick = () => play(c, btn);
+    rng.addEventListener('input', () => { trialState.ratings[c] = +rng.value; out.textContent = rng.value; row.classList.remove('unrated'); checkTrial(); });
+    $('#conds').appendChild(row);
+  });
+  $('#next').textContent = ti + 1 === order.length ? 'Finish' : 'Next excerpt';
+  checkTrial();
+  $('#loadMsg').textContent = 'Loading…'; buffers = {};
+  const entries = [['band', tr.band], ...TEST.conditions.map(c => [c, tr.files[c]])];
+  await Promise.all(entries.map(async ([k, u]) => { buffers[k] = await load(u); }));
+  $('#loadMsg').textContent = '';
+}
+
+function checkTrial() {
+  const all = TEST.conditions.every(c => trialState.ratings[c] != null && trialState.played[c]);
+  $('#next').disabled = !all; $('#trialHint').hidden = all;
+}
+
+function stop() {
+  if (src) { try { src.stop(); } catch {} src = null; }
+  if (ctx && current) offset = (ctx.currentTime - t0) % (buffers[current]?.duration || 10);
+  current = null;
+  document.querySelectorAll('.play').forEach(b => b.setAttribute('aria-pressed', 'false'));
+}
+
+function play(key, btn) {
+  if (!buffers[key]) return;
+  if (current === key) { stop(); return; }
+  const pos = current ? (ctx.currentTime - t0) % buffers[current].duration : offset;
+  if (src) { try { src.stop(); } catch {} }
+  src = ctx.createBufferSource(); src.buffer = buffers[key]; src.loop = true; src.connect(gain);
+  src.start(0, pos % buffers[key].duration); t0 = ctx.currentTime - (pos % buffers[key].duration);
+  current = key;
+  document.querySelectorAll('.play').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  if (key !== 'band') { trialState.played[key] = (trialState.played[key] || 0) + 1; checkTrial(); }
+}
+
+$('#bandBtn').onclick = () => play('band', $('#bandBtn'));
+$('#stopBtn').onclick = () => { stop(); offset = 0; };
+
+$('#next').onclick = () => {
+  stop(); offset = 0;
+  result.trials.push({ ...trialState, ms: Math.round(performance.now() - trialState.t), t: undefined });
+  ti++;
+  if (ti < order.length) showTrial();
+  else { $('#trial').hidden = true; $('#done').hidden = false; $('#progress').style.width = '100%'; }
+};
+
+$('#submit').onclick = async () => {
+  $('#submit').disabled = true;
+  result.finished = new Date().toISOString();
+  result.comment = $('#comment').value.trim();
+  const r = await send('test', result);
+  const p = $('#sent'); p.hidden = false;
+  if (r.where === 'server') p.textContent = 'Your answers were sent. Thank you for taking part.';
+  else { p.textContent = 'Your answers could not be sent to our server, so they were kept in this browser.'; $('#dlRow').hidden = false; }
+};
+$('#dl').onclick = () => download(`livebassnet-listening-${result.participant.id.slice(0, 8)}.json`, result);
+</script>
+</body>
+</html>

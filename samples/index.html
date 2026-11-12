@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiveBassNet Listening Samples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
+<link rel="stylesheet" href="../common/site.css">
+<style>
+  :root { --gen: #0d6b70; --real: #7a5c99; --near: #2f7d4f; --mid: #a26a0a; --far: #b2423a;
+          --chip-near: #e3f1e8; --chip-mid: #f6ecd9; --chip-far: #f6e1df; }
+  @media (prefers-color-scheme: dark) { :root { --gen: #58bfc2; --real: #b79ad6; --near: #6cc690; --mid: #e0a842; --far: #ec8278;
+          --chip-near: #1d3426; --chip-mid: #3a2e17; --chip-far: #3d2220; } }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .88rem; color: var(--muted); }
+  .sw { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .chip { display: inline-block; font-size: .7rem; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; margin-right: 8px; vertical-align: 1px; }
+  .chip.near { background: var(--chip-near); color: var(--near); } .chip.mid { background: var(--chip-mid); color: var(--mid); } .chip.far { background: var(--chip-far); color: var(--far); }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  td.gen { color: var(--gen); font-weight: 600; }
+  .tablebox table { min-width: 720px; }
+  section.group { display: grid; gap: 12px; }
+  .ghead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .clip { padding: 14px 16px; }
+  .ctop { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: baseline; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { font: 500 .85rem var(--sans); background: transparent; color: var(--ink); border: 0; padding: 6px 12px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .time { font-family: var(--mono); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  canvas.roll { width: 100%; height: 96px; display: block; border-radius: 4px; background: var(--ground); cursor: pointer; }
+  .stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: .84rem; color: var(--muted); }
+  .stats b { font-family: var(--mono); font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stats b.gen { color: var(--gen); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow"><a href="../">LiveBassNet</a> · listening samples</span>
+  <h1>Bass inside and outside the training data</h1>
+  <p class="lead">Twenty-second clips from songs the model was trained on to commercial recordings unlike anything in its training set, each with the generated and the real bass. All clips go through the demo page's pipeline: the band without its bass, our live beat tracker, the default model at z = 0 and the default note decisions, with a 10 s run-in.</p>
+  <div id="gate"></div>
+  <div id="content" hidden style="display:grid;gap:28px">
+    <div class="legend"><span><i class="sw" style="background:var(--gen)"></i>Generated bass</span><span><i class="sw" style="background:var(--real)"></i>Real bass of the song</span></div>
+    <section style="display:grid;gap:10px">
+      <h2>Summary by group</h2>
+      <div class="tablebox"><table id="summary"><thead><tr>
+        <th>Group</th><th>Clips</th><th>Beat-F gen.</th><th>Beat-F real</th><th>Beat-F mism.</th>
+        <th>COCOLA gen.</th><th>COCOLA real</th><th>COCOLA mism.</th><th>Pitch class = real</th><th>Notes / min</th></tr></thead><tbody></tbody></table></div>
+      <p class="small muted">Means over the group's clips. Beat-F: beats found by Beat This! in the bass versus in the band (±70 ms). COCOLA: how well the bass fits the band. “Mismatched” is the real bass of another clip, a floor. “Pitch class = real”: share of the time both basses sound in which the generated note has the real bass's pitch class. Twenty seconds per clip is short; treat single numbers as rough.</p>
+    </section>
+    <div id="groups" style="display:grid;gap:30px"></div>
+    <section style="display:grid;gap:12px">
+      <h2>Songs the model was trained on: slim3 against B</h2>
+      <p class="muted">An earlier comparison on 30 s of training songs (MUSDB18 and Slakh2100): the light model slim3 and the full model B, both fine-tuned on MUSDB18 + Slakh, against the real bass.</p>
+      <div id="train" style="display:grid;gap:12px"></div>
+    </section>
+    <p class="small muted">GTZAN has no stems: Demucs (htdemucs) splits each recording into bass and the rest; the model hears the rest and the separated bass is the reference. In RawStems the bass stem does not line up with the band (onset correlation 0.03 over 30 songs, against 0.25 to 0.35 for MUSDB18 and MoisesDB), so its “real” numbers are not a valid reference.</p>
+  </div>
+</div>
+
+<script type="module">
+import { unlock } from '../common/vault.js';
+const $ = s => document.querySelector(s);
+const DIST = { synth_train: 'near', synth_test: 'near', real_train: 'mid', real_test: 'mid', new_multi: 'far', new_wild: 'far' };
+const DLAB = { near: 'synthetic', mid: 'real, familiar', far: 'real, new' };
+const NOTE = { new_multi: 'RawStems: the real bass does not line up with the band, so the real-bass scores of this group are not valid.' };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const mean = a => { const v = a.filter(x => x != null && !Number.isNaN(x)); return v.length ? v.reduce((p, q) => p + q, 0) / v.length : null; };
+const f = (v, d = 2) => v == null ? '–' : v.toFixed(d);
+let current = null;
+
+const v = await unlock('../private', $('#gate'));
+$('#content').hidden = false;
+
+// one player per clip that keeps its position when the version changes
+function player(el, versions, dur, onTime) {
+  const audio = new Audio(); audio.preload = 'none';
+  const st = { ...Object.fromEntries(Object.entries(versions.state)) };
+  const play = el.querySelector('.play'), time = el.querySelector('.time');
+  const setSrc = async () => { const t = audio.currentTime, was = !audio.paused; audio.src = await v.url(versions.path(st)); audio.currentTime = t; if (was) audio.play().catch(() => {}); };
+  el.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+    st[seg.dataset.k] = b.dataset.v; seg.querySelectorAll('button').forEach(o => o.setAttribute('aria-pressed', o === b)); setSrc();
+  }));
+  play.onclick = async () => {
+    if (!audio.src) { play.textContent = '…'; await setSrc(); }
+    if (audio.paused) { if (current && current !== audio) current.pause(); current = audio; audio.play().catch(() => {}); } else audio.pause();
+  };
+  audio.onplay = () => play.textContent = 'Pause'; audio.onpause = () => play.textContent = 'Play';
+  audio.onended = () => { play.textContent = 'Play'; audio.currentTime = 0; onTime?.(0); };
+  audio.ontimeupdate = () => { time.textContent = `${audio.currentTime.toFixed(1)} / ${dur}.0 s`; onTime?.(audio.currentTime); };
+  return audio;
+}
+
+function drawRoll(cv, clip, dur, t) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const ps = clip.notes.map(n => n[2]).concat(clip.ref.filter(p => p > 0));
+  let lo = Math.min(...ps, 40) - 2, hi = Math.max(...ps, 40) + 2;
+  if (hi - lo < 18) { const c = (hi + lo) / 2; lo = c - 9; hi = c + 9; }
+  const y = p => H - 6 - (p - lo) / (hi - lo) * (H - 12), x = s => s / dur * W;
+  g.strokeStyle = css('--line'); for (let s = 0; s <= dur; s += 5) { g.beginPath(); g.moveTo(x(s) + .5, 0); g.lineTo(x(s) + .5, H); g.stroke(); }
+  g.fillStyle = css('--real'); clip.ref.forEach((p, i) => { if (p > 0) g.fillRect(x(i * 0.05), y(p) - 1, Math.max(1.5, x(0.05)), 2); });
+  g.fillStyle = css('--gen'); for (const [s, e, p] of clip.notes) g.fillRect(x(s), y(p) - 3, Math.max(2, x(e) - x(s) - 1), 6);
+  if (t) { g.fillStyle = css('--ink'); g.fillRect(x(t), 0, 1.5, H); }
+}
+
+const { meta, clips } = await v.json('ood/clips.json');
+const tb = $('#summary tbody');
+for (const g of meta.groups) {
+  const cs = clips.filter(c => c.group === g.key); if (!cs.length) continue;
+  const m = k => mean(cs.map(k)), tr = document.createElement('tr');
+  tr.innerHTML = `<td><span class="chip ${DIST[g.key]}">${DLAB[DIST[g.key]]}</span>${g.title}${NOTE[g.key] ? ' <span class="muted">(reference unreliable)</span>' : ''}</td><td class="num">${cs.length}</td>` +
+    `<td class="num gen">${f(m(c => c.stats.beat_f.gen))}</td><td class="num">${f(m(c => c.stats.beat_f.real))}</td><td class="num">${f(m(c => c.stats.beat_f.mismatched))}</td>` +
+    `<td class="num gen">${f(m(c => c.stats.cocola.gen), 1)}</td><td class="num">${f(m(c => c.stats.cocola.real), 1)}</td><td class="num">${f(m(c => c.stats.cocola.mismatched), 1)}</td>` +
+    `<td class="num gen">${f(m(c => c.stats.pitch_class_agree))}</td><td class="num">${f(m(c => c.stats.notes_per_min), 0)}</td>`;
+  tb.appendChild(tr);
+}
+for (const g of meta.groups) {
+  const cs = clips.filter(c => c.group === g.key); if (!cs.length) continue;
+  const sec = document.createElement('section'); sec.className = 'group';
+  sec.innerHTML = `<div class="ghead"><span class="chip ${DIST[g.key]}">${DLAB[DIST[g.key]]}</span><h2></h2><span class="muted"></span></div>`;
+  sec.querySelector('h2').textContent = g.title; sec.querySelector('.muted').textContent = g.sources;
+  if (NOTE[g.key]) { const p = document.createElement('p'); p.className = 'note'; p.textContent = NOTE[g.key]; sec.appendChild(p); }
+  for (const clip of cs) {
+    const s = clip.stats, el = document.createElement('article'); el.className = 'panel clip';
+    el.innerHTML = `<div class="ctop"><h3></h3><span class="small muted"></span></div>
+      <div class="row"><button class="btn play" type="button">Play</button>
+        <div class="seg" data-k="v" role="group" aria-label="Which bass"><button type="button" data-v="gen" aria-pressed="true">Generated</button><button type="button" data-v="real" aria-pressed="false">Real</button></div>
+        <div class="seg" data-k="m" role="group" aria-label="Mix"><button type="button" data-v="band" aria-pressed="true">With band</button><button type="button" data-v="solo" aria-pressed="false">Bass only</button></div>
+        <span class="time">0.0 / ${meta.dur_s}.0 s</span></div>
+      <canvas class="roll" aria-label="Piano roll: generated notes and the real bass's pitch"></canvas>
+      <div class="stats"><span>Beat-F <b class="gen">${f(s.beat_f.gen)}</b> / real <b>${f(s.beat_f.real)}</b></span>
+        <span>COCOLA <b class="gen">${f(s.cocola.gen, 1)}</b> / real <b>${f(s.cocola.real, 1)}</b></span>
+        <span>Pitch class = real <b class="gen">${f(s.pitch_class_agree)}</b></span>
+        <span>Sounding <b class="gen">${f(s.sounding.gen)}</b> / real <b>${f(s.sounding.real)}</b></span>
+        <span>Notes/min <b class="gen">${s.notes_per_min}</b></span></div>`;
+    el.querySelector('h3').textContent = clip.song;
+    el.querySelector('.ctop span').textContent = `${clip.source} · from ${clip.start_s} s`;
+    const cv = el.querySelector('canvas');
+    player(el, { state: { v: 'gen', m: 'band' }, path: st => 'ood/' + clip.files[st.v + (st.m === 'solo' ? '_solo' : '')] }, meta.dur_s, t => drawRoll(cv, clip, meta.dur_s, t));
+    sec.appendChild(el);
+    new ResizeObserver(() => drawRoll(cv, clip, meta.dur_s, 0)).observe(cv);
+  }
+  $('#groups').appendChild(sec);
+}
+
+const train = await v.json('train/index.json');
+const LAB = { musdb: 'MUSDB18 train', slakh: 'Slakh2100 train' };
+for (const c of train) {
+  const el = document.createElement('article'); el.className = 'panel clip';
+  const keys = Object.keys(c.files);
+  el.innerHTML = `<div class="ctop"><h3></h3><span class="small muted"></span></div>
+    <div class="row"><button class="btn play" type="button">Play</button>
+      <div class="seg" data-k="v" role="group" aria-label="Which bass">${keys.map((k, i) => `<button type="button" data-v="${k}" aria-pressed="${i === 0}">${k === 'real' ? 'Real' : k}</button>`).join('')}</div>
+      <div class="seg" data-k="m" role="group" aria-label="Mix"><button type="button" data-v="band" aria-pressed="true">With band</button><button type="button" data-v="solo" aria-pressed="false">Bass only</button></div>
+      <span class="time">0.0 / 30.0 s</span></div>
+    <div class="stats">${keys.filter(k => c.stats[k]).map(k => `<span>${k}: <b>${c.stats[k].notes_per_min}</b> notes/min, sounding <b>${c.stats[k].sounding_share}</b></span>`).join('')}</div>`;
+  el.querySelector('h3').textContent = c.song;
+  el.querySelector('.ctop span').textContent = `${LAB[c.kind] || c.kind} · from ${c.start_s} s`;
+  player(el, { state: { v: keys[0], m: 'band' }, path: st => 'train/' + (st.m === 'solo' ? 'bass_only/' : '') + c.files[st.v] }, 30);
+  $('#train').appendChild(el);
+}
+</script>
+</body>
+</html>

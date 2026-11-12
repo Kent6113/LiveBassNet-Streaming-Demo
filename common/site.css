@@ -1,0 +1,50 @@
+/* Shared look of the LiveBassNet site: one reading column, IBM Plex, a teal accent
+   taken from the original hub page.  Light by default, dark with the system. */
+:root {
+  --ground: #f3f6f6; --surface: #ffffff; --ink: #0e1a1c; --muted: #566b6e; --line: #d9e2e1;
+  --accent: #0d6b70; --accent-ink: #ffffff; --soft: #e2efee; --warn: #8a5a00; --warn-bg: #fbf1dc; --bad: #a3322b;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "IBM Plex Serif", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ground: #0c1315; --surface: #131e20; --ink: #e4ecea; --muted: #9db0b1; --line: #24363a;
+    --accent: #58bfc2; --accent-ink: #062022; --soft: #17302f; --warn: #e2b04a; --warn-bg: #33270f; --bad: #ec8278;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/1.55 var(--sans);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 52rem; margin: 0 auto; padding-block: 2.2rem 4rem; display: flex; flex-direction: column; gap: 1.4rem; }
+.wrap.narrow { max-width: 44rem; }
+.eyebrow { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.eyebrow a { color: inherit; text-decoration: none; }
+h1 { margin: 0; font-size: clamp(1.7rem, 4.6vw, 2.3rem); line-height: 1.12; text-wrap: balance; }
+h2 { margin: 0; font-size: 1.25rem; text-wrap: balance; }
+h3 { margin: 0; font-size: 1.02rem; }
+p { margin: 0; max-width: 68ch; }
+.lead { font-family: var(--serif); color: var(--muted); font-size: 1.04rem; }
+.muted { color: var(--muted); }
+.small { font-size: .86rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.btn { font: 600 .9rem var(--sans); border-radius: 8px; padding: 8px 16px; cursor: pointer; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.note { font-size: .88rem; background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 9px 12px; }
+.err { color: var(--bad); }
+input[type="password"], input[type="text"], select, textarea { font: .95rem var(--sans); padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--surface); color: var(--ink); }
+textarea { width: 100%; min-height: 4.5em; resize: vertical; }
+label { cursor: pointer; }
+a { color: var(--accent); }
+.tablebox { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

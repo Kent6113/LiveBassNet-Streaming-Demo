@@ -71,6 +71,18 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
 #roll { display: block; width: 100%; height: 180px; }
 .legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
 .sw { display: inline-block; width: 18px; height: 6px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.rate { display: grid; gap: 10px; }
+.rate .ratings { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+.rate fieldset { border: 0; margin: 0; padding: 0; }
+.rate legend { font-size: 13px; margin-bottom: 4px; }
+.rate .stars { display: inline-flex; gap: 2px; }
+.rate .stars button { font: 20px/1 var(--body); background: none; border: 0; padding: 2px 3px; cursor: pointer; color: var(--line); }
+.rate .stars button.on { color: var(--accent); }
+.rate .stars button:focus-visible { outline: 2px solid var(--accent); border-radius: 4px; }
+.rate textarea { width: 100%; font: 14px var(--body); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); resize: vertical; }
+.rate .consent { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.btn:disabled { opacity: .45; cursor: default; }
 .help { color: var(--muted); font-size: 12.5px; line-height: 1.45; margin: -4px 0 2px; }
 .quick { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; }
 .quick b { color: var(--accent); }
@@ -157,6 +169,21 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
     <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>Generated bass, as played</span></div>
   </section>
 
+  <section class="panel rate" id="rate" aria-label="Rate this bass line">
+    <div class="label">Rate this bass line</div>
+    <p class="help" style="margin:0">Your rating helps us improve the model. It is sent with the model settings and the notes that were played, never with your name.</p>
+    <div class="ratings">
+      <fieldset><legend>Fits the harmony</legend><div class="stars" data-k="harmony"></div></fieldset>
+      <fieldset><legend>Locks to the beat</legend><div class="stars" data-k="beat"></div></fieldset>
+      <fieldset><legend>Sounds like a bass player</legend><div class="stars" data-k="human"></div></fieldset>
+    </div>
+    <label for="rateComment" class="help" style="margin:0">Comment (optional)</label>
+    <textarea id="rateComment" rows="2" placeholder="What worked, what did not?"></textarea>
+    <label class="consent"><input type="checkbox" id="rateUpload"> Also send the song I uploaded. Tick only if you may share it (your own music, or freely licensed). It is stored on the LiveBassNet research server, used only for this research, never published, and deleted on request.</label>
+    <div class="toggles"><button class="btn primary" id="rateSend" type="button" disabled>Send rating</button><span class="help" id="rateMsg" style="margin:0">Load a song and listen first.</span>
+      <button class="btn" id="rateDl" type="button" hidden>Download my ratings</button></div>
+  </section>
+
   <section class="notes">
     <p><b>What happens.</b> The file is decoded, mixed to mono and resampled to 16 kHz. The page then computes the same causal constant-Q transform used in training (264 bins, A0 upwards, 10 ms hop, each frame ending at its own timestamp). A small causal beat network reads it (trained on Slakh2100’s MIDI beats and on 44 hours of varied real music labelled by the offline tracker Beat This!), and a bar-pointer filter turns its output into the beat phase, the sixteenth-note phase, the time to the next beat and the bar phase of every frame (“Click on tracked beats” lets you hear the tracking; it needs a few seconds to lock on). The bass model is the multi-rate streaming BassNet: one causal stream per time resolution (10 ms to 640 ms), fused with the beat features, then a decoder that outputs, for every frame, the pitch, the level, the onset curve and whether the bass should be playing at all. It was trained on Slakh2100 and then fine-tuned on real recordings (MUSDB18, half of the training segments) with offline beat and bass transcriptions as targets. Two sizes: “slim3” has lighter streams, shared output heads and a shorter decoder; its notes and rests sit closer to a real bass line’s, and it needs about half the compute. “B” is the full model: its pitch is more often right, but its rests come as long gaps. The default slim3 was fine-tuned on more real recordings (MUSDB18 and MoisesDB), half of the time with the beats of the live tracker instead of reference beats, as it gets them here; it places more notes on the right pitch. “Plays 100 ms ahead” is slim3 fine-tuned to output the bass of 100 ms later than the audio it has heard: it gets the tracked beats extrapolated 100 ms ahead at the current tempo and has to guess the next notes, as a live system must when computing and playing a note takes 100 ms (in our tests with a simulated 100 ms delay it nearly kept the beat alignment and harmonic fit of a system without delay, while a model that does not play ahead lands 100 ms late and loses almost all of its beat alignment). On this page nothing is delayed, so it shows what the bass sounds like when every note had to be decided 100 ms early. Switching keeps the analysed song. It runs with onnxruntime-web, on the GPU through WebGPU when the browser offers it, otherwise on several CPU threads, in chunks of 64 frames; each output frame uses only audio up to that frame, so this equals running it frame by frame.</p>
     <p><b>Note decisions.</b> A note starts one frame after the onset curve peaks above the onset threshold, if the model says the bass is playing there. It ends at the next note or when that “playing” output falls below the rest threshold, but not before it has sounded 80 ms (shorter notes were mostly flickers of that output): raise “Rests” for more space between notes, lower it for a more continuous line. By default a note keeps the pitch chosen at its start (“Follow pitch inside a note” lets it glide). The pitch goes through a causal smoothing filter first (“Pitch smoothing”, 0 = off), which removes rapid back-and-forth between notes and adds no delay.</p>
@@ -165,7 +192,9 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
   </section>
 </div>
 
+<script src="../config.js"></script>
 <script type="module">
+import { send, upload, download } from '../common/feedback.js';
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const MAX_S = 60, FPS = 100, SR16 = 16000, HOP = 160;
@@ -515,6 +544,7 @@ async function loadSong(arrayBuf, name) {
   playFrame = 0; regenerate(0);
   $('play').disabled = false;
   drawTimeline(0); drawRoll(0);
+  rateReady(name);
 }
 
 // ---------------- playback + causal note decisions ----------------
@@ -719,7 +749,7 @@ $('model').addEventListener('change', async () => {
   sel.disabled = false;
 });
 const drop = $('drop');
-const pick = async f => { if (!f) return; if (!workers.length) { err('Still starting the model, try again in a moment.'); return; } await loadSong(await f.arrayBuffer(), f.name); };
+const pick = async f => { if (!f) return; if (!workers.length) { err('Still starting the model, try again in a moment.'); return; } songFile = f; await loadSong(await f.arrayBuffer(), f.name); };
 drop.addEventListener('click', e => { if (e.target.id !== 'example') $('file').click(); });
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
 $('file').addEventListener('change', e => pick(e.target.files[0]));
@@ -729,8 +759,63 @@ drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('
 $('example').addEventListener('click', async e => {
   e.stopPropagation();
   if (!workers.length) { err('Still starting the model, try again in a moment.'); return; }
+  songFile = null;
   await loadSong(await (await fetch('example.mp3')).arrayBuffer(), 'Example: Slakh2100 Track01881 (bass removed), 0:60–1:30');
 });
+// ---------------- rating ----------------
+let songFile = null, songLabel = '', heardFrames = 0;
+const scores = {};
+document.querySelectorAll('#rate .stars').forEach(box => {
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = '★';
+    b.setAttribute('aria-label', `${box.closest('fieldset').querySelector('legend').textContent}: ${i} of 5`);
+    b.onclick = () => { scores[box.dataset.k] = i; box.querySelectorAll('button').forEach((o, j) => o.classList.toggle('on', j < i)); rateCheck(); };
+    box.appendChild(b);
+  }
+});
+function rateCheck() {
+  const ready = songLabel && Object.keys(scores).length === 3;
+  $('rateSend').disabled = !ready;
+  if (songLabel) $('rateMsg').textContent = ready ? '' : 'Give all three ratings to send.';
+}
+function rateReady(name) {
+  songLabel = name; heardFrames = 0;
+  $('rateUpload').disabled = !songFile; if (!songFile) $('rateUpload').checked = false;
+  $('rateMsg').textContent = ''; rateCheck();
+}
+// the notes that were actually played, as [start s, end s, MIDI]
+function playedNotes() {
+  const out = []; if (!played) return out;
+  let s = -1, m = 0;
+  for (let t = 0; t <= nF; t++) {
+    const v = t < nF ? played[t] : 0;
+    if (v !== m) { if (m > 0) out.push([+(s / FPS).toFixed(2), +(t / FPS).toFixed(2), m]); s = t; m = v; }
+    if (t < nF && played[t]) heardFrames = Math.max(heardFrames, t);
+  }
+  return out;
+}
+$('rateSend').onclick = async () => {
+  const btn = $('rateSend'); btn.disabled = true; $('rateMsg').textContent = 'Sending…';
+  const payload = {
+    page: 'studio_b', model: $('model').value, model_info: cfg && { run: cfg.run, anticipate: cfg.anticipate || 0 },
+    z: Z, settings: { onset: $('thr').value / 100, rests: $('vthr').value / 100, smoothing: $('stay').value / 100, glide: $('glide').checked },
+    beats: tapGrid ? { source: 'tapped', bpm: +(6000 / tapGrid.P).toFixed(1), meter: +$('meter').value } : { source: 'tracker' },
+    song: { example: !songFile, duration_s: +(nF / FPS).toFixed(1) },
+    scores: { ...scores }, comment: $('rateComment').value.trim(), notes: playedNotes(), heard_until_s: +(heardFrames / FPS).toFixed(1),
+  };
+  const r = await send('rating', payload);
+  let msg = r.where === 'server' ? 'Thank you, your rating was sent.' : 'Our server could not be reached, so the rating was kept in this browser.';
+  if ($('rateUpload').checked && songFile) {
+    if (r.where !== 'server') msg += ' The song was not sent.';
+    else {
+      try { await upload({ consent: true, rating_id: r.id, filename: songFile.name, ...payload }, songFile); msg += ' Your song was sent too.'; }
+      catch (e) { msg += ` The song could not be sent (${e.message}).`; }
+    }
+  }
+  $('rateMsg').textContent = msg; $('rateDl').hidden = r.where === 'server';
+  btn.disabled = false;
+};
+$('rateDl').onclick = () => download('livebassnet-ratings.json');
 window.addEventListener('resize', () => { drawPad(); drawTimeline(playFrame); drawRoll(playFrame); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { drawPad(); drawTimeline(playFrame); drawRoll(playFrame); });
 mixer();
