@@ -1,0 +1,13 @@
+{
+ "arch": "multirate",
+ "run": "runs/ft_slim3_mix_ant10",
+ "history": 832,
+ "chunk": 64,
+ "bins": 264,
+ "width": 64,
+ "latent_dim": 2,
+ "beat_dim": 7,
+ "voicing": true,
+ "anticipate": 10,
+ "check_max_abs_diff": 6.631016731262207e-06
+}

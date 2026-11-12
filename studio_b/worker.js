@@ -10,6 +10,11 @@
 // itself (zeros before the song) and the beat features of the chunk, and returns the
 // outputs of all T frames.  Frame t only uses frames <= t, so this equals running
 // the model frame by frame (web/export_multirate.py checks it against predict_song).
+//
+// A model trained to play ahead (model.json "anticipate": D frames, multirate.py train
+// --anticipate D) gets the beat features extrapolated D frames ahead (advance(), as
+// bassnet/streaming/anticipate.py) and its output at frame t is the bass of frame t + D:
+// the bass it plays at a moment uses only the audio up to D frames before it.
 import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.bundle.min.mjs';
 import { makeKernels, cqtFrames, BINS, decodeHmm, barFilter } from './core.js';
 
@@ -33,6 +38,36 @@ export function makeHandler(post) {
     const { p } = await beatnet.run({ x: new ort.Tensor('float32', m.feat, [1, T, BINS]) });
     const act = await p.getData();
     return barFilter(act, T, hmm);
+  }
+
+  // beat features moved D frames ahead at the current beat period, causally: the period is
+  // the median of the last four intervals between beats seen so far, the beats per bar
+  // from the bar phase gained per beat (bassnet/streaming/anticipate.py)
+  function advance(F, D) {
+    const n = F.length / 7, out = Float32Array.from(F);
+    if (!D) return out;
+    const TAU = 2 * Math.PI, mod1 = v => v - Math.floor(v);
+    const ph = t => mod1(Math.atan2(F[t * 7], F[t * 7 + 1]) / TAU), bar = t => mod1(Math.atan2(F[t * 7 + 5], F[t * 7 + 6]) / TAU);
+    const med = a => { const b = [...a].sort((x, y) => x - y), k = b.length; return k % 2 ? b[(k - 1) / 2] : (b[k / 2 - 1] + b[k / 2]) / 2; };
+    const wraps = [];
+    let P = 50, nb = 4;
+    for (let t = 0; t < n; t++) {
+      if (t > 0 && ph(t) - ph(t - 1) < -0.5) {
+        wraps.push(t);
+        const w = wraps.slice(-5);
+        if (w.length >= 2) {
+          P = med(w.slice(1).map((v, i) => v - w[i]));
+          const gain = med(w.slice(1).map((v, i) => mod1(bar(v) - bar(w[i]))));
+          nb = Math.min(7, Math.max(2, Math.round(1 / Math.max(gain, 1e-3))));
+        }
+      }
+      const p2 = ph(t) + D / P, b2 = bar(t) + D / P / nb, o = t * 7;
+      out[o] = Math.sin(TAU * p2); out[o + 1] = Math.cos(TAU * p2);
+      out[o + 2] = Math.sin(4 * TAU * p2); out[o + 3] = Math.cos(4 * TAU * p2);
+      out[o + 4] = Math.min((1 - mod1(p2)) * P / 100, 1);
+      out[o + 5] = Math.sin(TAU * b2); out[o + 6] = Math.cos(TAU * b2);
+    }
+    return out;
   }
 
   const sig = v => 1 / (1 + Math.exp(-v));
@@ -66,7 +101,7 @@ export function makeHandler(post) {
       let z = 0;
       for (let k = 0; k < BINS; k++) z += Math.exp(pitch[base + k] - mx);
       for (let k = 0; k < BINS; k++) sp[q * 88 + Math.min(87, Math.floor((k + 1) / 3))] += Math.exp(pitch[base + k] - mx) / z;
-      frames[q] = m.ts[Math.floor(q / T)] - T + 1 + (q % T);
+      frames[q] = m.ts[Math.floor(q / T)] - T + 1 + (q % T) + (cfg.anticipate || 0);   // the frame it plays
       midi[q] = Math.round(21 + best / 3);         // 36 bins per octave from A0 (MIDI 21)
       lv[q] = sig(level[q]); on[q] = sig(onset[q]); vo[q] = sig(voicing[q]);
     }
@@ -80,7 +115,7 @@ export function makeHandler(post) {
         ks ??= makeKernels();
         const out = cqtFrames(m.audio, ks, m.a, m.b);
         post({ type: 'cqt', a: m.a, b: m.b, out }, [out.buffer]);
-      } else if (m.type === 'feat') { F = m.feat; N = m.n; BF = m.beats || null; post({ type: 'featok' }); }
+      } else if (m.type === 'feat') { F = m.feat; N = m.n; BF = m.beats ? advance(m.beats, cfg.anticipate || 0) : null; post({ type: 'featok' }); }
       else if (m.type === 'beats') { const bf = await beats(m); post({ type: 'beats', bf }, [bf.buffer]); }
       else if (m.type === 'run') {
         const r = await run(m);
