@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiveBassNet Primer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
+<link rel="stylesheet" href="../common/site.css">
+<style>
+  article { display: grid; gap: 14px; min-width: 0; }
+  article h2 { margin-top: 1.2rem; }
+  article h2.part { font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); border-top: 2px solid var(--accent); padding-top: 10px; margin-top: 2rem; }
+  article h3 { margin-top: .6rem; }
+  article p, article li { max-width: 72ch; }
+  article ol, article ul { margin: 0; padding-left: 1.4rem; display: grid; gap: 6px; }
+  article li > p { margin: 0; }
+  article img { max-width: 100%; height: auto; border-radius: 8px; background: #fff; }
+  article table { display: block; overflow-x: auto; font-variant-numeric: tabular-nums; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  article th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--soft); }
+  article .fig { display: block; font-size: .86rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
+  article code { font-family: var(--mono); font-size: .88em; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow"><a href="../">LiveBassNet</a> · primer</span>
+  <h1>LiveBassNet: a primer</h1>
+  <p class="lead">What the project does and why it is hard, in plain terms, for colleagues from other fields (written with NLP researchers in mind).</p>
+  <div id="gate"></div>
+
+  <article id="doc"></article>
+</div>
+<script type="module">
+import { unlock } from '../common/vault.js';
+const v = await unlock('../private', document.getElementById('gate'));
+document.getElementById('doc').innerHTML = await v.text("primer.html");
+
+if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+</script>
+</body>
+</html>
