@@ -56,6 +56,11 @@
       <p class="muted">An earlier comparison on 30 s of training songs (MUSDB18 and Slakh2100): the light model slim3 and the full model B, both fine-tuned on MUSDB18 + Slakh, against the real bass.</p>
       <div id="train" style="display:grid;gap:12px"></div>
     </section>
+    <section style="display:grid;gap:12px">
+      <h2>Groove plan: a bar-level rhythm planner (work in progress)</h2>
+      <p class="muted">Held-out Slakh2100 songs, 30 s from 40 s, the model run live from the song start. <b>demo</b>: the current model. <b>plan</b>: a small planner picks each bar's rhythm pattern from what was played before (temperature 1) and the model follows it. <b>plan_sync</b>: the same, favouring syncopated patterns. <b>plan_real</b>: the model given the real bass's own bar patterns, an upper bound that is not available live.</p>
+      <div id="groove" style="display:grid;gap:12px"></div>
+    </section>
     <p class="small muted">GTZAN has no stems: Demucs (htdemucs) splits each recording into bass and the rest; the model hears the rest and the separated bass is the reference. In RawStems the bass stem does not line up with the band (onset correlation 0.03 over 30 songs, against 0.25 to 0.35 for MUSDB18 and MoisesDB), so its “real” numbers are not a valid reference.</p>
   </div>
 </div>
@@ -163,6 +168,23 @@ for (const c of train) {
   el.querySelector('.ctop span').textContent = `${LAB[c.kind] || c.kind} · from ${c.start_s} s`;
   player(el, { state: { v: keys[0], m: 'band' }, path: st => 'train/' + (st.m === 'solo' ? 'bass_only/' : '') + c.files[st.v] }, 30);
   $('#train').appendChild(el);
+}
+
+let groove = [];
+try { groove = await v.json('groove/index.json'); } catch (e) { groove = []; }
+for (const c of groove) {
+  const el = document.createElement('article'); el.className = 'panel clip';
+  const keys = Object.keys(c.files);
+  el.innerHTML = `<div class="ctop"><h3></h3><span class="small muted"></span></div>
+    <div class="row"><button class="btn play" type="button">Play</button>
+      <div class="seg" data-k="v" role="group" aria-label="Which bass">${keys.map((k, i) => `<button type="button" data-v="${k}" aria-pressed="${i === 0}">${k === 'real' ? 'Real' : k}</button>`).join('')}</div>
+      <div class="seg" data-k="m" role="group" aria-label="Mix"><button type="button" data-v="band" aria-pressed="true">With band</button><button type="button" data-v="solo" aria-pressed="false">Bass only</button></div>
+      <span class="time">0.0 / 30.0 s</span></div>
+    <div class="stats">${keys.filter(k => c.stats[k]).map(k => `<span>${k}: <b>${c.stats[k].notes_per_min}</b> notes/min</span>`).join('')}</div>`;
+  el.querySelector('h3').textContent = c.song;
+  el.querySelector('.ctop span').textContent = `Slakh2100 test (held out) · from ${c.start_s} s`;
+  player(el, { state: { v: keys[0], m: 'band' }, path: st => 'groove/' + (st.m === 'solo' ? 'bass_only/' : '') + c.files[st.v] }, 30);
+  $('#groove').appendChild(el);
 }
 </script>
 </body>
