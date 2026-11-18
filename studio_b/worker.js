@@ -20,6 +20,7 @@ import { makeKernels, cqtFrames, BINS, decodeHmm, barFilter } from './core.js';
 
 export function makeHandler(post) {
   let S = null, cfg = null, ks = null, F = null, N = 0, BF = null, zKey = null, zmap = null, beatnet = null, hmm = null;
+  let PL = null;   // bar plan features (frames x 3: bump, avail, density) for a model with a plan input
 
   async function init(m) {
     ort.env.wasm.numThreads = 1;
@@ -80,15 +81,18 @@ export function makeHandler(post) {
       zKey = key;
     }
     const H = cfg.history, T = cfg.chunk, B = m.ts.length, L = H + T;
-    const x = new Float32Array(B * L * BINS), b = new Float32Array(B * T * 7);
+    const x = new Float32Array(B * L * BINS), b = new Float32Array(B * T * 7), pl = new Float32Array(B * T * 3);
     for (let i = 0; i < B; i++) {
       const s = m.ts[i] - T + 1;
       const a = Math.max(0, s - H), e = Math.min(N, s + T);          // song frames present
       if (e > a) x.set(F.subarray(a * BINS, e * BINS), (i * L + (a - (s - H))) * BINS);
       const be = Math.min(N, s + T);
       if (BF && be > s) b.set(BF.subarray(s * 7, be * 7), i * T * 7);
+      if (cfg.plan && PL && be > s) pl.set(PL.subarray(s * 3, be * 3), i * T * 3);
     }
-    const o = await S.chunk.run({ x: new ort.Tensor('float32', x, [B, L, BINS]), b: new ort.Tensor('float32', b, [B, T, 7]), zmap });
+    const feeds = { x: new ort.Tensor('float32', x, [B, L, BINS]), b: new ort.Tensor('float32', b, [B, T, 7]), zmap };
+    if (cfg.plan) feeds.plan = new ort.Tensor('float32', pl, [B, T, 3]);
+    const o = await S.chunk.run(feeds);
     const [pitch, level, onset, voicing] = await Promise.all([o.pitch.getData(), o.level.getData(), o.onset.getData(), o.voicing.getData()]);
     const n = B * T;
     const frames = new Int32Array(n), midi = new Uint8Array(n), lv = new Float32Array(n), on = new Float32Array(n), vo = new Float32Array(n);
@@ -116,6 +120,7 @@ export function makeHandler(post) {
         const out = cqtFrames(m.audio, ks, m.a, m.b);
         post({ type: 'cqt', a: m.a, b: m.b, out }, [out.buffer]);
       } else if (m.type === 'feat') { F = m.feat; N = m.n; BF = m.beats ? advance(m.beats, cfg.anticipate || 0) : null; post({ type: 'featok' }); }
+      else if (m.type === 'plan') { PL = m.plan; post({ type: 'featok' }); }
       else if (m.type === 'beats') { const bf = await beats(m); post({ type: 'beats', bf }, [bf.buffer]); }
       else if (m.type === 'run') {
         const r = await run(m);

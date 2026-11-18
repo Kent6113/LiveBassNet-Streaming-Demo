@@ -147,12 +147,15 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
         <p class="help">How sure the model must be before it plays a new note. Lower: more notes; higher: fewer notes, only the clearest attacks.</p>
         <div class="row"><label for="stay">Pitch smoothing</label><input id="stay" type="range" min="0" max="95" value="0"><output for="stay">0.00</output></div>
         <p class="help">How strongly the chosen pitch holds still. Higher: steadier notes, fewer stray pitches, but more repeated notes; 0 (default): each note takes the model's pitch at its start.</p>
+        <div class="row" id="varyRow" hidden><label for="vary">Variation</label><input id="vary" type="range" min="50" max="120" value="90"><output for="vary">0.90</output></div>
+        <p class="help" id="varyHelp" hidden>Groove planner only: how freely each bar's rhythm is drawn. Lower: the same pattern bar after bar, mostly on the beat; higher: more fills and syncopation.</p>
         <div class="row"><label for="mel">Melodic</label><input id="mel" type="range" min="0" max="100" value="50"><output for="mel">0.50</output></div>
         <p class="help">How much each note's pitch leans towards the intervals real bass lines use after the previous note: steps and chromatic approach notes instead of repeating the root. 0: the model's own choice.</p>
         <div class="row"><label for="model">Model</label>
           <select id="model">
             <option value="slim3ma" selected>slim3 · newest, plays 100 ms ahead (default)</option>
             <option value="slim3m">slim3 · more real data</option>
+            <option value="slim3mp">slim3 · groove planner (new)</option>
             <option value="slim3">slim3 · earlier version</option>
             <option value="b">B · more accurate pitch, twice the compute</option>
             <option value="slim3a">slim3 · plays 100 ms ahead, earlier version</option>
@@ -188,7 +191,7 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
   </section>
 
   <section class="notes">
-    <p><b>What happens.</b> The file is decoded, mixed to mono and resampled to 16 kHz. The page then computes the same causal constant-Q transform used in training (264 bins, A0 upwards, 10 ms hop, each frame ending at its own timestamp). A small causal beat network reads it (trained on Slakh2100’s MIDI beats and on 44 hours of varied real music labelled by the offline tracker Beat This!), and a bar-pointer filter turns its output into the beat phase, the sixteenth-note phase, the time to the next beat and the bar phase of every frame (“Click on tracked beats” lets you hear the tracking; it needs a few seconds to lock on). The bass model is the multi-rate streaming BassNet: one causal stream per time resolution (10 ms to 640 ms), fused with the beat features, then a decoder that outputs, for every frame, the pitch, the level, the onset curve and whether the bass should be playing at all. It was trained on Slakh2100 and then fine-tuned on real recordings (MUSDB18, half of the training segments) with offline beat and bass transcriptions as targets. Two sizes: “slim3” has lighter streams, shared output heads and a shorter decoder; its notes and rests sit closer to a real bass line’s, and it needs about half the compute. “B” is the full model: its pitch is more often right, but its rests come as long gaps. “More real data” was fine-tuned on more real recordings (MUSDB18 and MoisesDB), half of the time with the beats of the live tracker instead of reference beats, as it gets them here; it places more notes on the right pitch. “Plays 100 ms ahead” is slim3 fine-tuned to output the bass of 100 ms later than the audio it has heard: it gets the tracked beats extrapolated 100 ms ahead at the current tempo and has to guess the next notes, as a live system must when computing and playing a note takes 100 ms (in our tests with a simulated 100 ms delay it nearly kept the beat alignment and harmonic fit of a system without delay, while a model that does not play ahead lands 100 ms late and loses almost all of its beat alignment). On this page nothing is delayed, so it shows what the bass sounds like when every note had to be decided 100 ms early. The default model is that same 100 ms anticipation applied to “more real data” (fine-tuned from it on the same recordings, half with tracked beats). Switching keeps the analysed song. It runs with onnxruntime-web, on the GPU through WebGPU when the browser offers it, otherwise on several CPU threads, in chunks of 64 frames; each output frame uses only audio up to that frame, so this equals running it frame by frame.</p>
+    <p><b>What happens.</b> The file is decoded, mixed to mono and resampled to 16 kHz. The page then computes the same causal constant-Q transform used in training (264 bins, A0 upwards, 10 ms hop, each frame ending at its own timestamp). A small causal beat network reads it (trained on Slakh2100’s MIDI beats and on 44 hours of varied real music labelled by the offline tracker Beat This!), and a bar-pointer filter turns its output into the beat phase, the sixteenth-note phase, the time to the next beat and the bar phase of every frame (“Click on tracked beats” lets you hear the tracking; it needs a few seconds to lock on). The bass model is the multi-rate streaming BassNet: one causal stream per time resolution (10 ms to 640 ms), fused with the beat features, then a decoder that outputs, for every frame, the pitch, the level, the onset curve and whether the bass should be playing at all. It was trained on Slakh2100 and then fine-tuned on real recordings (MUSDB18, half of the training segments) with offline beat and bass transcriptions as targets. Two sizes: “slim3” has lighter streams, shared output heads and a shorter decoder; its notes and rests sit closer to a real bass line’s, and it needs about half the compute. “B” is the full model: its pitch is more often right, but its rests come as long gaps. “More real data” was fine-tuned on more real recordings (MUSDB18 and MoisesDB), half of the time with the beats of the live tracker instead of reference beats, as it gets them here; it places more notes on the right pitch. “Plays 100 ms ahead” is slim3 fine-tuned to output the bass of 100 ms later than the audio it has heard: it gets the tracked beats extrapolated 100 ms ahead at the current tempo and has to guess the next notes, as a live system must when computing and playing a note takes 100 ms (in our tests with a simulated 100 ms delay it nearly kept the beat alignment and harmonic fit of a system without delay, while a model that does not play ahead lands 100 ms late and loses almost all of its beat alignment). On this page nothing is delayed, so it shows what the bass sounds like when every note had to be decided 100 ms early. The default model is that same 100 ms anticipation applied to “more real data” (fine-tuned from it on the same recordings, half with tracked beats). “Groove planner (new)” adds a small bar-level planner: after the first two bars, it writes each bar's rhythm step by step (16 sixteenth-note steps) from the bars it planned before, and the model, fine-tuned to follow such a plan, plays it with pitches from the audio. “Variation” sets how freely the planner draws (its sampling temperature); a guard keeps a bar from planning more than 1.5 times the recent number of notes. On held-out real songs it brings the share of syncopated sixteenths and the bar-to-bar variety close to real bass lines (about 15% vs 14%), where the other models play about 6%. Switching keeps the analysed song. It runs with onnxruntime-web, on the GPU through WebGPU when the browser offers it, otherwise on several CPU threads, in chunks of 64 frames; each output frame uses only audio up to that frame, so this equals running it frame by frame.</p>
     <p><b>Note decisions.</b> A note starts one frame after the onset curve peaks above the onset threshold, if the model says the bass is playing there. It ends at the next note or when that “playing” output falls below the rest threshold, but not before it has sounded 80 ms (shorter notes were mostly flickers of that output): raise “Rests” for more space between notes, lower it for a more continuous line. By default a note keeps the pitch chosen at its start (“Follow pitch inside a note” lets it glide). By default a note takes the model's pitch at its start, leaned by “Melodic” towards the intervals real bass lines use after the previous note (a causal correction learned from held-out songs: the model never hears its own previous note, and on its own it repeats the root about 50% of the time against about 40% in real lines, and moves by step half as often). An optional causal smoothing filter (“Pitch smoothing”) holds the pitch steadier, at the cost of more repeated notes.</p>
     <p><b>Moving z.</b> When you let go of the point (and every 0.3 s while dragging), the bass is recomputed from just ahead of the playhead onwards. The timeline shows how far the new z has got. On a CPU it can run slower than real time, and parts not yet recomputed play the previous z.</p>
     <p><b>Limits.</b> A song that already contains bass mostly makes the model double that bass. The pad shading is the average note rate over the first minute of three MUSDB18 test songs, to give a sense of direction only.</p>
@@ -251,6 +254,8 @@ async function loadModel(key) {
   const dir = `model/${key}/`;
   [cfg, density] = await Promise.all([get(dir + 'model.json', 'json'), get(dir + 'density.json', 'json')]);
   [models.zmap, models.chunk] = await Promise.all([b64(dir + 'zmap.onnx.b64.txt'), b64(dir + 'chunk.onnx.b64.txt')]);
+  planNet = cfg.plan ? plannerNet(await get(dir + 'planner.json', 'json')) : null;
+  $('varyRow').hidden = $('varyHelp').hidden = !cfg.plan;
   every = cfg.chunk;
   $('thr').value = Math.round(density.threshold * 100); $('thr').nextElementSibling.textContent = density.threshold.toFixed(2);
   $('vthr').value = Math.round(density.voicing * 100); $('vthr').nextElementSibling.textContent = density.voicing.toFixed(2);
@@ -398,6 +403,7 @@ function onWorker(rec, m) {
         : `Generating ${Math.round(100 * freshCount / nF)}% · ${(doneFrames / FPS / Math.max(sec, 0.1)).toFixed(1)}× real time`;
       $('fresh').textContent = `${Math.round(100 * freshCount / nF)}%`;
       if (!playing && !tlPending) { tlPending = true; requestAnimationFrame(() => { tlPending = false; drawTimeline(playFrame); }); }
+      maybePlan();
     }
     dispatch(); return;
   }
@@ -456,6 +462,7 @@ function gridFeatures(a, P, nb, n) {
 function useBeats(bf) {
   BF = bf; periods = beatPeriods(BF);
   workers.forEach(r => { r.featReady = false; r.w.postMessage({ type: 'feat', n: nF, feat: FEAT, beats: BF }); });
+  resetPlan();
   regenerate(playFrame);
 }
 function setBeatSource() {
@@ -544,10 +551,130 @@ async function loadSong(arrayBuf, name) {
     $('beatinfo').textContent = beatSummary(BF) + ` · tracked in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
   }
   workers.forEach(r => r.w.postMessage({ type: 'feat', n: nF, feat, beats: BF }));
+  resetPlan();
   playFrame = 0; regenerate(0);
   $('play').disabled = false;
   drawTimeline(0); drawRoll(0);
   rateReady(name);
+}
+
+// ==== planner begin: step-wise bar planner (scripts/bit_planner.py, bassnet/groove_plan.py) in plain JS
+// A GRU over bars (own pattern of bar k + phrase position) gives h_k; a GRU cell over the
+// 16 steps of bar k+1, started from tanh(to_step h_k), samples one onset per step.
+function plannerNet(P) {
+  const W = P.w, S = P.shapes, H = S['gru.weight_hh_l0'][1], HS = S['step.weight_hh'][1];
+  const mv = (w, rows, cols, x, off = 0) => { const y = new Float64Array(rows); for (let r = 0; r < rows; r++) { let a = 0; const o = r * cols; for (let c = 0; c < cols; c++) a += w[o + c] * x[c]; y[r] = a; } return y; };
+  const sig = v => 1 / (1 + Math.exp(-v));
+  function gru(wih, whh, bih, bhh, x, h, n) {           // PyTorch GRU cell, gates r, z, n
+    const gi = mv(wih, 3 * n, x.length, x), gh = mv(whh, 3 * n, n, h), out = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = sig(gi[i] + bih[i] + gh[i] + bhh[i]), z = sig(gi[n + i] + bih[n + i] + gh[n + i] + bhh[n + i]);
+      const nn = Math.tanh(gi[2 * n + i] + bih[2 * n + i] + r * (gh[2 * n + i] + bhh[2 * n + i]));
+      out[i] = (1 - z) * nn + z * h[i];
+    }
+    return out;
+  }
+  // one bar of history: own pattern (16) and the phrase position of the next bar (one-hot 8)
+  function barStep(h, bits, k) {
+    const x = new Float64Array(24); for (let s = 0; s < 16; s++) x[s] = bits[s]; x[16 + ((k + 1) % 8)] = 1;
+    const a = mv(W['inp.0.weight'], H, 24, x); for (let i = 0; i < H; i++) a[i] = Math.max(0, a[i] + W['inp.0.bias'][i]);
+    return gru(W['gru.weight_ih_l0'], W['gru.weight_hh_l0'], W['gru.bias_ih_l0'], W['gru.bias_hh_l0'], a, h, H);
+  }
+  function stepStart(h) { const s = mv(W['to_step.weight'], HS, H, h); for (let i = 0; i < HS; i++) s[i] = Math.tanh(s[i] + W['to_step.bias'][i]); return s; }
+  function stepLogit(s, prev, t) {
+    const x = new Float64Array(17); x[0] = prev; x[1 + t] = 1;
+    const s2 = gru(W['step.weight_ih'], W['step.weight_hh'], W['step.bias_ih'], W['step.bias_hh'], x, s, HS);
+    let o = W['out.bias'][0]; for (let i = 0; i < HS; i++) o += W['out.weight'][i] * s2[i];
+    return [s2, o];
+  }
+  // logits of the 16 steps given teacher bits (for the check against PyTorch)
+  function teacherLogits(h, bits) { let s = stepStart(h), prev = 0; const out = []; for (let t = 0; t < 16; t++) { const [s2, o] = stepLogit(s, prev, t); out.push(o); s = s2; prev = bits[t]; } return out; }
+  function sample(h, temp, rand) { let s = stepStart(h), prev = 0; const b = new Uint8Array(16); for (let t = 0; t < 16; t++) { const [s2, o] = stepLogit(s, prev, t); b[t] = rand() < sig(o / Math.max(temp, 1e-3)) ? 1 : 0; s = s2; prev = b[t]; } return b; }
+  return { H, barStep, sample, teacherLogits, zero: () => new Float64Array(H) };
+}
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+// plans for every bar after the warm bars: history = the played patterns of the warm bars,
+// then the planner's own plans; density guard as groove_plan.bit_choose (8 candidates, the
+// first with at most max(4, ceil(1.5 x median of the last 8 bars)) onsets, else the sparsest)
+function planBars(net, played, nBars, temp, seed) {
+  const rand = mulberry32(seed), plans = new Array(nBars).fill(null), hist = [];
+  let h = net.zero();
+  for (let k = 0; k < nBars - 1; k++) {
+    const bits = k < played.length ? played[k] : plans[k];
+    if (!bits) break;
+    hist.push(bits); h = net.barStep(h, bits, hist.length - 1);
+    if (k + 1 < played.length) continue;
+    const last = hist.slice(-8).map(b => b.reduce((x, y) => x + y, 0)).sort((x, y) => x - y);
+    const med = last.length % 2 ? last[(last.length - 1) / 2] : (last[last.length / 2 - 1] + last[last.length / 2]) / 2;
+    const cap = Math.max(4, Math.ceil(1.5 * med));
+    let pick = null, sparsest = null;
+    for (let c = 0; c < 8 && !pick; c++) {
+      const b = net.sample(h, temp, rand), n = b.reduce((x, y) => x + y, 0);
+      if (n <= cap) pick = b; else if (!sparsest || n < sparsest.n) sparsest = Object.assign(b, { n });
+    }
+    plans[k + 1] = pick || sparsest;
+  }
+  return plans;
+}
+// ==== planner end
+
+// ---------------- bar plans for the groove-planner model ----------------
+// Once the first two complete bars have been generated without a plan, the patterns
+// played there seed the planner, which then plans every later bar from its own plans
+// (as scripts/groove_diag.py, history = plans).  The plan becomes three inputs per
+// frame (bassnet/groove_plan.plan_features) sent to the workers; moving "Variation"
+// re-plans.
+let planNet = null, PL = null, planDone = false, barStarts = [];
+function barStartsOf() { const s = []; for (let t = 1; t < nF; t++) if (barPhase(t) - barPhase(t - 1) < -0.5) s.push(t); return s; }
+function playedBits(a, b, thr) {
+  const bits = new Uint8Array(16);
+  for (let t = Math.max(a, 2); t < b - 2; t++) {
+    const o = ons[t]; if (o < thr) continue;
+    let pk = true; for (let d = -2; d <= 2; d++) if (d && ons[t + d] > o) pk = false;
+    if (!pk) continue;
+    const q = Math.round(barPhase(t) * 16); if (q < 16) bits[q] = 1;
+  }
+  return bits;
+}
+function sendPlan() { workers.forEach(r => { r.featReady = false; r.w.postMessage({ type: 'plan', plan: PL.slice(0) }); }); }
+function resetPlan() {
+  planDone = false; PL = new Float32Array(Math.max(nF, 1) * 3);
+  barStarts = BF ? barStartsOf() : [];
+  if (cfg && cfg.plan) sendPlan();
+}
+function doPlan() {
+  if (!cfg.plan || !planNet || barStarts.length < 4) return;
+  const S = barStarts, thr = $('thr').value / 100;
+  const played = [playedBits(S[0], S[1], thr), playedBits(S[1], S[2], thr)];
+  const plans = planBars(planNet, played, S.length, $('vary').value / 100, 1234);
+  PL = new Float32Array(nF * 3);
+  for (let k = 0; k < S.length; k++) {
+    const bits = plans[k]; if (!bits) continue;
+    const dens = bits.reduce((x, y) => x + y, 0) / 16, end = k + 1 < S.length ? S[k + 1] : nF;
+    for (let t = S[k]; t < end; t++) {
+      const q = barPhase(t) * 16; let bump = 0;
+      for (let st = 0; st < 16; st++) if (bits[st]) { let d = Math.abs(q - st); d = Math.min(d, 16 - d); bump = Math.max(bump, Math.exp(-0.5 * (d / 0.2) ** 2)); }
+      PL[t * 3] = bump; PL[t * 3 + 1] = 1; PL[t * 3 + 2] = dens;
+    }
+  }
+  planDone = true; sendPlan(); regenerate(Math.max(S[2], playFrame));
+}
+// read-only summary for tests: window.LBN_PLAN()
+window.LBN_PLAN = () => {
+  if (!PL || !barStarts.length) return { planDone, bars: barStarts.length };
+  let planned = 0, onsets = 0, hit = 0, steps = 0;
+  const thr = $('thr').value / 100;
+  for (let k = 2; k + 1 < barStarts.length; k++) {
+    const t0 = barStarts[k]; if (!PL[t0 * 3 + 1]) continue;
+    planned++; onsets += PL[t0 * 3 + 2] * 16;
+    for (let t = t0; t < barStarts[k + 1]; t++) if (PL[t * 3] > 0.99) { steps++; let m = 0; for (let d = -3; d <= 3; d++) m = Math.max(m, ons[t + d] || 0); if (m >= thr) hit++; }
+  }
+  return { planDone, bars: barStarts.length, planned, onsetsPerBar: planned ? onsets / planned : 0, followed: steps ? hit / steps : 0, fresh: freshCount / nF };
+};
+function maybePlan() {
+  if (!cfg || !cfg.plan || planDone || barStarts.length < 4) return;
+  for (let t = barStarts[0]; t < barStarts[2]; t++) if (!fresh[t]) return;
+  doPlan();
 }
 
 // ---------------- playback + causal note decisions ----------------
@@ -750,6 +877,8 @@ document.addEventListener('keydown', e => { if (e.code === 'Space' && e.target =
 ['vBand', 'vGen'].forEach(id => $(id).addEventListener('input', mixer));
 $('thr').addEventListener('input', () => { $('thr').nextElementSibling.textContent = ($('thr').value / 100).toFixed(2); });
 $('stay').addEventListener('input', () => { $('stay').nextElementSibling.textContent = ($('stay').value / 100).toFixed(2); });
+$('vary').addEventListener('input', () => { $('vary').nextElementSibling.textContent = ($('vary').value / 100).toFixed(2); });
+$('vary').addEventListener('change', () => { if (cfg && cfg.plan && planDone) doPlan(); });
 $('mel').addEventListener('input', () => { $('mel').nextElementSibling.textContent = ($('mel').value / 100).toFixed(2); });
 
 $('vthr').addEventListener('input', () => { $('vthr').nextElementSibling.textContent = ($('vthr').value / 100).toFixed(2); });
@@ -763,7 +892,7 @@ $('model').addEventListener('change', async () => {
     workers.forEach(r => r.w.terminate()); workers = [];
     await loadModel(sel.value); drawPad();
     await startWorkers();
-    if (nF && FEAT) { workers.forEach(r => r.w.postMessage({ type: 'feat', n: nF, feat: FEAT, beats: BF })); regenerate(playFrame); }
+    if (nF && FEAT) { workers.forEach(r => r.w.postMessage({ type: 'feat', n: nF, feat: FEAT, beats: BF })); resetPlan(); regenerate(playFrame); }
     if (wasPlaying) start();
   } catch (e) { err(e.message || String(e)); $('backend').textContent = 'unavailable'; }
   sel.disabled = false;
@@ -818,7 +947,7 @@ $('rateSend').onclick = async () => {
   const btn = $('rateSend'); btn.disabled = true; $('rateMsg').textContent = 'Sending…';
   const payload = {
     page: 'studio_b', model: $('model').value, model_info: cfg && { run: cfg.run, anticipate: cfg.anticipate || 0 },
-    z: Z, settings: { onset: $('thr').value / 100, rests: $('vthr').value / 100, smoothing: $('stay').value / 100, melodic: $('mel').value / 100, glide: $('glide').checked },
+    z: Z, settings: { onset: $('thr').value / 100, rests: $('vthr').value / 100, smoothing: $('stay').value / 100, melodic: $('mel').value / 100, variation: cfg && cfg.plan ? $('vary').value / 100 : null, glide: $('glide').checked },
     beats: tapGrid ? { source: 'tapped', bpm: +(6000 / tapGrid.P).toFixed(1), meter: +$('meter').value } : { source: 'tracker' },
     song: { example: !songFile, duration_s: +(nF / FPS).toFixed(1) },
     scores: { ...scores }, comment: $('rateComment').value.trim(), notes: playedNotes(), heard_until_s: +(heardFrames / FPS).toFixed(1),
