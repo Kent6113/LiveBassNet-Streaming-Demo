@@ -62,6 +62,11 @@
       <div id="groove" style="display:grid;gap:12px"></div>
     </section>
     <section style="display:grid;gap:12px">
+      <h2>Groove planner on real music (work in progress)</h2>
+      <p class="muted">Real songs (MUSDB18 test, MoisesDB held out), 30 s from 40 s, live from the song start. A small planner writes each bar's rhythm step by step from the bars played before, and the model follows it; pitches use the page's “Melodic” correction in every version. <b>demo</b>: no planner. <b>plan085</b>: planner at temperature 0.85. <b>plan1</b>: temperature 1, more variation and syncopation.</p>
+      <div id="grooveReal" style="display:grid;gap:12px"></div>
+    </section>
+    <section style="display:grid;gap:12px">
       <h2>Pitch: fewer repeated notes on real music (work in progress)</h2>
       <p class="muted">Real songs (MUSDB18 test, MoisesDB held out), 30 s from 40 s, the current model with the same note starts; only how each note's pitch is chosen changes. <b>demo</b>: as on the page. <b>raw</b>: the model's pitch at the onset, without smoothing. <b>steps</b> / <b>steps_more</b>: the same, corrected towards the intervals of real bass lines (more steps and chromatic approaches, fewer repeated roots), at two strengths.</p>
       <div id="pitch" style="display:grid;gap:12px"></div>
@@ -190,6 +195,23 @@ for (const c of groove) {
   el.querySelector('.ctop span').textContent = `Slakh2100 test (held out) · from ${c.start_s} s`;
   player(el, { state: { v: keys[0], m: 'band' }, path: st => 'groove/' + (st.m === 'solo' ? 'bass_only/' : '') + c.files[st.v] }, 30);
   $('#groove').appendChild(el);
+}
+
+let grClips = [];
+try { grClips = await v.json('groove_real/index.json'); } catch (e) { grClips = []; }
+for (const c of grClips) {
+  const el = document.createElement('article'); el.className = 'panel clip';
+  const keys = Object.keys(c.files);
+  el.innerHTML = `<div class="ctop"><h3></h3><span class="small muted"></span></div>
+    <div class="row"><button class="btn play" type="button">Play</button>
+      <div class="seg" data-k="v" role="group" aria-label="Which bass">${keys.map((k, i) => `<button type="button" data-v="${k}" aria-pressed="${i === 0}">${k === 'real' ? 'Real' : k}</button>`).join('')}</div>
+      <div class="seg" data-k="m" role="group" aria-label="Mix"><button type="button" data-v="band" aria-pressed="true">With band</button><button type="button" data-v="solo" aria-pressed="false">Bass only</button></div>
+      <span class="time">0.0 / 30.0 s</span></div>
+    <div class="stats">${keys.filter(k => c.stats[k]).map(k => `<span>${k}: <b>${c.stats[k].notes_per_min}</b> notes/min</span>`).join('')}</div>`;
+  el.querySelector('h3').textContent = c.song;
+  el.querySelector('.ctop span').textContent = `${c.kind} · from ${c.start_s} s`;
+  player(el, { state: { v: keys[0], m: 'band' }, path: st => 'groove_real/' + (st.m === 'solo' ? 'bass_only/' : '') + c.files[st.v] }, 30);
+  $('#grooveReal').appendChild(el);
 }
 
 let pitchClips = [];
