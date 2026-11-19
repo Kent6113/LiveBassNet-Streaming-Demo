@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif&display=swap">
 <link rel="stylesheet" href="../common/site.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <style>
   article { display: grid; gap: 14px; min-width: 0; }
   article h2 { margin-top: 1.2rem; }
@@ -20,6 +22,7 @@
   article th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--soft); }
   article .fig { display: block; font-size: .86rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
   article code { font-family: var(--mono); font-size: .88em; }
+  article .math { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
   nav.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .9rem; }
 </style>
 </head>
@@ -37,6 +40,11 @@ import { unlock } from '../common/vault.js';
 const v = await unlock('../private', document.getElementById('gate'));
 document.getElementById('doc').innerHTML = await v.text('report.html');
 document.getElementById('toc').hidden = false;
+// display formulas: the doc's ```latex blocks arrive as <pre><code class="language-latex">
+for (const c of document.querySelectorAll('#doc pre > code.language-latex')) {
+  const d = document.createElement('div'); d.className = 'math';
+  try { katex.render(c.textContent, d, { displayMode: true, throwOnError: false }); c.parentElement.replaceWith(d); } catch (e) {}
+}
 if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 </script>
 </body>
